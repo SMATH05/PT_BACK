@@ -1,0 +1,93 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+use App\Models\Task;
+
+class TaskController extends Controller
+{
+    public function index()
+    {
+        // جيب جميع الـtasks من DB
+        $tasks = Task::all();
+
+        // رجعهم كـ JSON
+        return response()->json($tasks);
+    }
+    public function show($id)
+    {
+        // جيب الـtask بالـid المحدد
+        $task = Task::with('chefDeProjet')->find($id);
+
+        if (!$task) {
+            return response()->json(['message' => 'Task not found'], 404);
+        }
+
+        // رجع الـtask كـ JSON
+        return response()->json($task);
+    }
+    function store(Request $request)
+    {
+        // تحقق من البيانات المدخلة
+        $validatedData = $request->validate([
+            'title' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'status' => 'required|string|in:pending,in_progress,completed',
+            'chef_de_projet_id' => 'required|exists:users,id',
+        ]);
+
+        // أنشئ الـtask الجديد
+        $task = Task::create($validatedData);
+
+        // رجع الـtask الجديد كـ JSON
+        return response()->json($task, 201);
+    }
+    function update(Request $request, $id)
+    {
+        // تحقق من البيانات المدخلة
+        $validatedData = $request->validate([
+            'title' => 'sometimes|required|string|max:255',
+            'description' => 'sometimes|nullable|string',
+            'status' => 'sometimes|required|string|in:pending,in_progress,completed',
+            'chef_de_projet_id' => 'sometimes|required|exists:users,id',
+        ]);
+
+        // جيب الـtask بالـid المحدد
+        $task = Task::find($id);
+
+        if (!$task) {
+            return response()->json(['message' => 'Task not found'], 404);
+        }
+
+        // حدث الـtask بالبيانات الجديدة
+        $task->update($validatedData);
+
+        // رجع الـtask المحدث كـ JSON
+        return response()->json($task);
+    }
+    function destroy($id)
+    {
+        // جيب الـtask بالـid المحدد
+        $task = Task::find($id);
+
+        if (!$task) {
+            return response()->json(['message' => 'Task not found'], 404);
+        }
+
+        // احذف الـtask
+        $task->delete();
+
+        // رجع رسالة نجاح
+        return response()->json(['message' => 'Task deleted successfully']);
+    }
+    function tasksByChefDeProjet($chefDeProjetId)
+    {
+        // جيب كل الـtasks اللي عندهم chef_de_projet_id يساوي $chefDeProjetId
+        $tasks = Task::where('chef_de_projet_id', $chefDeProjetId)->get();
+
+        // رجعهم كـ JSON
+        return response()->json($tasks);
+    }
+}
+
