@@ -89,5 +89,44 @@ class TaskController extends Controller
         // رجعهم كـ JSON
         return response()->json($tasks);
     }
+    function tasksByStatus($status)
+    {
+        // جيب كل الـtasks اللي عندهم status يساوي $status
+        $tasks = Task::where('status', $status)->get();
+
+        // رجعهم كـ JSON
+        return response()->json($tasks);
+    }
+    function tasksByChefDeProjetAndStatus($chefDeProjetId, $status)
+    {
+        // جيب كل الـtasks اللي عندهم chef_de_projet_id يساوي $chefDeProjetId و status يساوي $status
+        $tasks = Task::where('chef_de_projet_id', $chefDeProjetId)
+                     ->where('status', $status)
+                     ->get();
+
+        // رجعهم كـ JSON
+        return response()->json($tasks);
+    }
+    function updateStatus(Request $request, $id)
+    {
+        // تحقق من البيانات المدخلة
+        $validatedData = $request->validate([
+            'status' => 'required|string|in:pending,in_progress,completed',
+        ]);
+
+        // جيب الـtask بالـid المحدد
+        $task = Task::find($id);
+
+        if (!$task) {
+            return response()->json(['message' => 'Task not found'], 404);
+        }
+
+        // حدث حالة الـtask
+        $task->status = $validatedData['status'];
+        $task->save();
+
+        // رجع الـtask المحدث كـ JSON
+        return response()->json($task);
+    }
 }
 
