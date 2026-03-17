@@ -23,7 +23,7 @@ class TaskController extends Controller
         if (!$task) {
             return response()->json(['message' => 'Task not found'], 404);
         }
-
+ 
         // رجع الـtask كـ JSON
         return response()->json($task);
     }
