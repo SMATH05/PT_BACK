@@ -128,5 +128,53 @@ class TaskController extends Controller
         // رجع الـtask المحدث كـ JSON
         return response()->json($task);
     }
-}
 
+    /**
+     * Get task SLA
+     */
+    public function getSla($taskId)
+    {
+        $task = Task::find($taskId);
+
+        if (!$task) {
+            return response()->json(['message' => 'Task not found'], 404);
+        }
+
+        $sla = $task->slaTask;
+
+        if (!$sla) {
+            return response()->json(['message' => 'No SLA found for this task'], 404);
+        }
+
+        return response()->json($sla);
+    }
+
+    /**
+     * Create or update task SLA
+     */
+    public function updateSla(Request $request, $taskId)
+    {
+        $task = Task::find($taskId);
+
+        if (!$task) {
+            return response()->json(['message' => 'Task not found'], 404);
+        }
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'max_response_time' => 'required|integer|min:1',
+            'max_resolution_time' => 'required|integer|min:1',
+            'priority' => 'required|string|in:low,medium,high,critical',
+        ]);
+
+        $sla = $task->slaTask()->updateOrCreate(
+            ['task_id' => $taskId],
+            $validated
+        );
+
+        return response()->json([
+            'message' => 'Task SLA updated successfully',
+            'data' => $sla,
+        ]);
+    }
+}

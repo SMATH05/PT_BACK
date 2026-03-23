@@ -18,6 +18,7 @@ class Manager extends Model
      */
     protected $fillable = [
         'name',
+        'email',
     ];
 
     /**

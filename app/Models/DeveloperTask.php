@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Relations\Pivot;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class DeveloperTask extends Pivot
 {
@@ -40,4 +41,20 @@ class DeveloperTask extends Pivot
     protected $casts = [
         'assigned_at' => 'datetime',
     ];
+
+    /**
+     * Get the developer associated with this assignment.
+     */
+    public function developer(): BelongsTo
+    {
+        return $this->belongsTo(Developer::class);
+    }
+
+    /**
+     * Get the task associated with this assignment.
+     */
+    public function task(): BelongsTo
+    {
+        return $this->belongsTo(Task::class);
+    }
 }
