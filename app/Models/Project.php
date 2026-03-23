@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Models\ProjectFile;
 
 class Project extends Model
 {
@@ -21,9 +22,11 @@ class Project extends Model
      */
     protected $fillable = [
         'name',
+        'description',
         'deadline',
         'manager_id',
         'chef_de_projet_id',
+        'folder_path',
     ];
 
     /**
@@ -75,6 +78,14 @@ class Project extends Model
         return $this->belongsToMany(Developer::class, 'developer_project')
                     ->withPivot('position', 'joined_at')
                     ->withTimestamps();
+    }
+
+    /**
+     * Get the files uploaded to this project.
+     */
+    public function files(): HasMany
+    {
+        return $this->hasMany(ProjectFile::class);
     }
 
     /**
