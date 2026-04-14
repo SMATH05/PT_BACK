@@ -1,0 +1,64 @@
+% =============================================
+% CHAPITRE 3 : CONCEPTION
+% =============================================
+\chapter{Conception}
+
+\section{Introduction}
+L'\'{e}tape de conception traduit le cahier des charges en sp\'{e}cifications techniques
+et architecturales. Elle sert de plan au d\'{e}veloppement. Ce chapitre pr\'{e}sente
+les choix architecturaux et la mod\'{e}lisation de la base de donn\'{e}es.
+
+\section{Architecture Globale du Syst\`{e}me}
+
+L'application \textbf{PT\_BACK} est d\'{e}velopp\'{e}e sous forme d'une \textbf{API RESTful} structur\'{e}e
+sur le design pattern \textbf{MVC (Mod\`{e}le-Vue-Contr\^{o}leur)}, adapt\'{e} pour r\'{e}pondre
+\`{a} des requ\^{e}tes \texttt{HTTP} et servir le format JSON pluto\^{o}t que des vues rendues.
+
+\vspace{0.4cm}
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Client} : Les applications Front-end ou Mobiles (ex: React, VueJs).
+    \item \textbf{Auth Server (Keycloak)} : G\`{e}re avec ind\'{e}pendance les comptes
+    et \'{e}met les \textit{JSON Web Tokens (JWT)}.
+    \item \textbf{Backend (PT\_BACK/Laravel)} : Intercepte les requ\^{e}tes, v\'{e}rifie
+    la l\'{e}gitimit\'{e} du JWT et traite la logique m\'{e}tier des projets.
+\end{itemize}
+
+\section{Diagramme de Cas d'Utilisation}
+
+Le diagramme de cas d'utilisation illustre de mani\`{e}re synth\'{e}tique les
+interactions des acteurs avec les principaux modules de l'API.
+
+\begin{itemize}[leftmargin=*, label=\textcolor{emsiRed}{\ding{118}}]
+    \item \textbf{Manager} $\rightarrow$ Cr\'{e}ation/Gestion des projets ; Import/Export de donn\'{e}es.
+    \item \textbf{Chef de Projet} $\rightarrow$ Suivi des projets ; Cr\'{e}ation et validation des t\^{a}ches.
+    \item \textbf{D\'{e}veloppeur} $\rightarrow$ Consultation des t\^{a}ches assign\'{e}es ; Mise \`{a} jour des statuts.
+\end{itemize}
+
+\section{Mod\'{e}lisation des Donn\'{e}es (Base de donn\'{e}es relationnelle)}
+
+L'impl\'{e}mentation r\'{e}elle sous Laravel utilise les mod\`{e}les \textit{Eloquent ORM}.
+Nous avons extrait la sch\'{e}matique \`{a} partir des migrations effectu\'{e}es dans le framework.
+
+\subsection{Entit\'{e}s Principales}
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Projects} : \texttt{id}, \texttt{name}, \texttt{client}, \texttt{start\_date}, \texttt{status}, \texttt{manager\_id}, \texttt{chef\_de\_projet\_id}.
+    \item \textbf{Tasks} : \texttt{id}, \texttt{title}, \texttt{goal}, \texttt{status}, \texttt{project\_id}.
+    \item \textbf{Managers}, \textbf{ChefDeProjets}, \textbf{Developers} : Repr\'{e}sentent les diff\'{e}rentes
+    entit\'{e}s humaines au sein du syst\`{e}me.
+\end{itemize}
+
+\subsection{Associations et Tables de Jonction (Pivots)}
+Plusieurs relations "*Many-to-Many*" s'op\`{e}rent dans l'application :
+\begin{itemize}[leftmargin=*]
+    \item \textbf{developer\_project} : Associe les D\'{e}veloppeurs aux Projets. Elle embarque
+    les champs suppl\'{e}mentaires \texttt{position} et \texttt{joined\_at}.
+    \item \textbf{developer\_task} : Associe les D\'{e}veloppeurs aux T\^{a}ches en permettant
+    la sp\'{e}cification d'un \texttt{role} et le timestamp \texttt{assigned\_at}.
+    \item \textbf{sla\_projects} et \textbf{sla\_tasks} : Entit\'{e}s permettant de logguer et
+    lister les SLAs d\'{e}sir\'{e}s.
+\end{itemize}
+
+\section{Conclusion}
+La rigueur accord\'{e}e \`{a} la mod\'{e}lisation garantira que l'impl\'{e}mentation dans
+Laravel s'effectuera de mani\`{e}re fluide, en s'appuyant sur ses relations \textit{Eloquent}.
+Ceci nous m\`{e}nera droit aux r\'{e}alisations effectives.

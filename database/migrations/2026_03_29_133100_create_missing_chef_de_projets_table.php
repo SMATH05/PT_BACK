@@ -11,17 +11,15 @@ return new class extends Migration
      */
     public function up(): void
     {
-        if (Schema::hasTable('sla_projects')) {
+        if (Schema::hasTable('chef_de_projets')) {
             return;
         }
 
-        Schema::create('sla_projects', function (Blueprint $table) {
+        Schema::create('chef_de_projets', function (Blueprint $table): void {
             $table->id();
             $table->string('name');
-            $table->integer('max_response_time');
-            $table->integer('max_resolution_time');
-            $table->string('priority');
-            $table->foreignId('project_id')->unique()->constrained('projects')->cascadeOnDelete();
+            $table->string('email')->unique();
+            $table->unsignedBigInteger('manager_id')->nullable();
             $table->timestamps();
         });
     }
@@ -31,6 +29,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('sla_projects');
+        Schema::dropIfExists('chef_de_projets');
     }
 };

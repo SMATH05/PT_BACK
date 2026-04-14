@@ -5,60 +5,112 @@ namespace App\Http\Controllers;
 use App\Models\Project;
 use App\Models\ProjectFile;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Symfony\Component\HttpFoundation\Response;
 
 class ProjectFileController extends Controller
 {
-    /**
-     * Upload a file to a project
-     */
     public function uploadFile(Request $request, $projectId)
     {
-        // Validate the request
         $validated = $request->validate([
-            'file' => 'required|file|max:10240', // 10MB in kilobytes
+            'file' => 'required|file|max:10240',
         ]);
 
-        // Get the project
         $project = Project::find($projectId);
 
-        if (!$project) {
+        if (! $project) {
             return response()->json(['message' => 'Project not found'], 404);
         }
 
-        // Get the uploaded file
-        $file = $request->file('file');
+        $file = $validated['file'];
+        $disk = config('filesystems.default', 'local');
+        $baseFolderPath = $project->folder_path ?: 'projects/' . $project->id;
+        $folderPath = $baseFolderPath . '/files';
+        $uniqueFilename = time() . '_' . uniqid() . '_' . $file->getClientOriginalName();
 
-        // Get the original filename
-        $originalFilename = $file->getClientOriginalName();
+        Storage::disk($disk)->makeDirectory($folderPath);
+        $filepath = $file->storeAs($folderPath, $uniqueFilename, $disk);
 
-        // Create a unique filename to avoid conflicts
-        $uniqueFilename = time() . '_' . uniqid() . '_' . $originalFilename;
-
-        // Get the project's folder path
-        $projectFolderPath = storage_path('app/' . $project->folder_path);
-
-        // Ensure the project folder exists
-        if (!file_exists($projectFolderPath)) {
-            mkdir($projectFolderPath, 0755, true);
-        }
-
-        // Store the file in the project's folder
-        $file->move($projectFolderPath, $uniqueFilename);
-
-        // Create the filepath for database storage (relative path)
-        $filepath = $project->folder_path . '/' . $uniqueFilename;
-
-        // Create the project file record
         $projectFile = ProjectFile::create([
             'project_id' => $projectId,
-            'filename' => $originalFilename,
+            'filename' => $file->getClientOriginalName(),
             'filepath' => $filepath,
+            'disk' => $disk,
+            'mime_type' => $file->getClientMimeType(),
+            'size' => $file->getSize(),
         ]);
 
-        // Return JSON response with the uploaded file info
         return response()->json([
             'message' => 'File uploaded successfully',
-            'data' => $projectFile,
+            'data' => $this->formatProjectFile($projectFile),
         ], 201);
+    }
+
+    public function show($projectId, $fileId): Response
+    {
+        $projectFile = $this->findProjectFile($projectId, $fileId);
+        $disk = $projectFile->disk ?? config('filesystems.default', 'local');
+
+        abort_unless(Storage::disk($disk)->exists($projectFile->filepath), 404, 'File not found on disk');
+
+        return Storage::disk($disk)->response(
+            $projectFile->filepath,
+            $projectFile->filename,
+            ['Content-Type' => $projectFile->mime_type ?? 'application/octet-stream']
+        );
+    }
+
+    public function download($projectId, $fileId): Response
+    {
+        $projectFile = $this->findProjectFile($projectId, $fileId);
+        $disk = $projectFile->disk ?? config('filesystems.default', 'local');
+
+        abort_unless(Storage::disk($disk)->exists($projectFile->filepath), 404, 'File not found on disk');
+
+        return Storage::disk($disk)->download($projectFile->filepath, $projectFile->filename);
+    }
+
+    public function destroy($projectId, $fileId)
+    {
+        $projectFile = $this->findProjectFile($projectId, $fileId);
+        $disk = $projectFile->disk ?? config('filesystems.default', 'local');
+
+        if (Storage::disk($disk)->exists($projectFile->filepath)) {
+            Storage::disk($disk)->delete($projectFile->filepath);
+        }
+
+        $projectFile->delete();
+
+        return response()->json(['message' => 'File deleted successfully']);
+    }
+
+    private function findProjectFile($projectId, $fileId): ProjectFile
+    {
+        $project = Project::find($projectId);
+        abort_unless($project !== null, 404, 'Project not found');
+
+        $projectFile = $project->files()->find($fileId);
+        abort_unless($projectFile !== null, 404, 'File not found');
+
+        return $projectFile;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function formatProjectFile(ProjectFile $projectFile): array
+    {
+        return [
+            'id' => $projectFile->id,
+            'project_id' => $projectFile->project_id,
+            'filename' => $projectFile->filename,
+            'filepath' => $projectFile->filepath,
+            'disk' => $projectFile->disk,
+            'mime_type' => $projectFile->mime_type,
+            'size' => $projectFile->size,
+            'view_url' => url("/api/projects/{$projectFile->project_id}/files/{$projectFile->id}"),
+            'download_url' => url("/api/projects/{$projectFile->project_id}/files/{$projectFile->id}/download"),
+            'created_at' => $projectFile->created_at,
+        ];
     }
 }

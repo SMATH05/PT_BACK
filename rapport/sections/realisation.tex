@@ -1,0 +1,93 @@
+% =============================================
+% CHAPITRE 4 : REALISATION ET TESTS
+% =============================================
+\chapter{R\'{e}alisation et Tests}
+
+\section{Introduction}
+L'\'{e}tape de r\'{e}alisation est l'aboutissement de notre analyse et mod\'{e}lisation,
+menant au d\'{e}veloppement effectif de l'application. Ce chapitre met en valeur
+quelques fonctionnalit\'{e}s critiques et des parties importantes de code
+pr\'{e}sentant la robustesse du projet.
+
+\section{Structure du Projet Laravel}
+Le r\'{e}pertoire source \textbf{PT\_BACK} suit l'arborescence conventionnelle et MVC de Laravel :
+\begin{itemize}[leftmargin=*]
+    \item \texttt{app/Models/} : Les classes ORM repr\'{e}sentant les tables de BD (ex: \texttt{Project}, \texttt{Manager}).
+    \item \texttt{app/Http/Controllers/} : L'intelligence de traitement de l'API. (ex: \texttt{ManagerController}).
+    \item \texttt{routes/api.php} : Le registre g\'{e}r\'{e} des routes expos\'{e}es, classifi\'{e}es
+    derri\`{e}re les m\'{e}canismes de s\'{e}curit\'{e}.
+    \item \texttt{database/migrations/} : Syst\`{e}me de versionnement de proc\'{e}dure SQL garantissant la portabilit\'{e}.
+\end{itemize}
+
+\section{Mise en sc\`{e}ne de cas Techniques Complexes}
+
+\subsection{1. Protection et S\'{e}curisation via Keycloak}
+Afin de centraliser l'authentification de mani\`{e}re entreprise, les modules de l'API
+sont clo\^{i}tr\'{e}s par un middleware. Le syst\`{e}me intercepte tous les appels. Il d\'{e}cortique le
+\textit{JWT} v\'{e}n\'{e}r\'{e} en en-t\^{e}te, valides sa conformit\'{e} cryptographique et le rejette en cas d'un statut non d\'{e}sirable.
+
+\begin{lstlisting}[language=PHP_Laravel, caption={Extrait des routes s\'{e}curis\'{e}es (routes/api.php)}]
+Route::middleware('keycloak.auth')->group(function (): void {
+    // Profil utilisateur
+    Route::get('auth/me', function (Request $request) {
+        $claims = $request->attributes->get('keycloak_claims', []);
+        return response()->json(['user' => $claims]);
+    });
+
+    // Endpoints Manager
+    Route::apiResource('managers', ManagerController::class);
+});
+\end{lstlisting}
+
+\subsection{2. Scaffolding Automatis\'{e} du Projet (Workspace Creation)}
+Une fonctionnalit\'{e} phares r\'{e}side lors de la cr\'{e}ation du projet : le backend pr\'{e}pare
+substitutivement un \textit{Espace de stockage virtuellement op\'{e}rationnel} repr\'{e}sentant
+le template de travail VS-Code ou d'archive id\'{e}al.
+
+\begin{lstlisting}[language=PHP_Laravel, caption={Cr\'{e}ation du workspace (ManagerController.php)}]
+private function createProjectWorkspace(string $folderPath, array $metadata): void
+{
+    $disk = Storage::disk(config('filesystems.default', 'local'));
+    $disk->makeDirectory($folderPath);
+
+    // Generation des repertoires de travail predefinis
+    foreach (['docs', 'files', 'src', 'tasks', 'deliverables'] as $dir) {
+        $disk->makeDirectory($folderPath . '/' . $dir);
+        $disk->put($folderPath . '/' . $dir . '/.gitkeep', '');
+    }
+
+    $disk->put($folderPath . '/README.md', '# ' . $metadata['name']);
+    $disk->put($folderPath . '/project.json', json_encode($metadata));
+}
+\end{lstlisting}
+
+\subsection{3. S\'{e}curit\'{e} Transactionnelle de BDD avec les Assignations en Masse}
+Un Manager peut inviter plusieurs D\'{e}veloppeurs ou Chefs sur de multiples T\^{a}ches
+simultan\'{e}ments. Pour maintenir l'int\'{e}grit\'{e} du syst\`{e}me en cas d'erreur
+pendant le m\'{e}trage de ces assignations, tout ceci passe par \texttt{DB::transaction}.
+
+\begin{lstlisting}[language=PHP_Laravel, caption={Assignations avec Transactions BD}]
+DB::transaction(function () use ($validated, $project): void {
+    // 1. Affectation des developpeurs au Projet
+    if (!empty($validated['project_developers'])) {
+        $project->developers()->syncWithoutDetaching($syncProjectDevelopers);
+    }
+    // 2. Affectation de Taches Cibles
+    if (!empty($validated['task_assignments'])) {
+        foreach ($validated['task_assignments'] as $assignment) {
+            $task = $project->tasks->firstWhere('id', $assignment['task_id']);
+            $task->developers()->sync($syncTaskDevelopers);
+        }
+    }
+});
+\end{lstlisting}
+
+\section{Tests de Fonctionnement (Tests Unitaires et Postman)}
+L'ensemble de l'API REST a \'{e}t\'{e} test\'{e} et monitor\'{e} scrupuleusement avec \textbf{Postman}.
+Chaque ressource \textit{CRUD} retourne des indicateurs de conformit\'{e} clairs
+(R\'{e}ponse 200, 201 en cr\'{e}ation, ou 404, 422 en cas de faute).
+
+\section{Conclusion}
+Durant cette r\'{e}alisation, nous avons veill\'{e} \`{a} la propret\'{e} et la qualit\'{e} du code.
+Les fondations qui constituent aujourd'hui PT\_BACK garantissent des possibilit\'{e}s
+d'\'{e}volutions front et mobile riches.

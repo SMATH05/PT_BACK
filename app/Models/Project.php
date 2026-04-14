@@ -8,12 +8,23 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
-use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Storage;
 use App\Models\ProjectFile;
 
 class Project extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory;
+
+    /**
+     * Computed attributes exposed in API responses.
+     *
+     * @var array<int, string>
+     */
+    protected $appends = [
+        'absolute_folder_path',
+        'vscode_url',
+        'workspace_exists',
+    ];
 
     /**
      * The attributes that are mass assignable.
@@ -22,8 +33,12 @@ class Project extends Model
      */
     protected $fillable = [
         'name',
+        'client',
         'description',
+        'start_date',
+        'end_date',
         'deadline',
+        'status',
         'manager_id',
         'chef_de_projet_id',
         'folder_path',
@@ -35,6 +50,8 @@ class Project extends Model
      * @var array<string, string>
      */
     protected $casts = [
+        'start_date' => 'date',
+        'end_date' => 'date',
         'deadline' => 'date',
     ];
 
@@ -88,6 +105,34 @@ class Project extends Model
         return $this->hasMany(ProjectFile::class);
     }
 
+    public function getAbsoluteFolderPathAttribute(): ?string
+    {
+        if (! $this->folder_path) {
+            return null;
+        }
+
+        return storage_path('app/' . $this->folder_path);
+    }
+
+    public function getVscodeUrlAttribute(): ?string
+    {
+        if (! $this->absolute_folder_path) {
+            return null;
+        }
+
+        return 'vscode://file/' . str_replace('\\', '/', $this->absolute_folder_path);
+    }
+
+    public function getWorkspaceExistsAttribute(): bool
+    {
+        if (! $this->folder_path) {
+            return false;
+        }
+
+        return Storage::disk(config('filesystems.default', 'local'))
+            ->directoryExists($this->folder_path);
+    }
+
     /**
      * Get the progress of the project (percentage of completed tasks).
      */
@@ -99,7 +144,7 @@ class Project extends Model
             return 0.0;
         }
 
-        $completedTasks = $this->tasks()->where('status', 'completed')->count();
+        $completedTasks = $this->tasks()->whereIn('status', ['done', 'completed'])->count();
 
         return round(($completedTasks / $totalTasks) * 100, 2);
     }

@@ -58,6 +58,16 @@ class DeveloperTaskController extends Controller
             return response()->json(['message' => 'Task not found'], 404);
         }
 
+        $isAssignedToProject = $developer->projects()
+            ->where('projects.id', $task->project_id)
+            ->exists();
+
+        if (! $isAssignedToProject) {
+            return response()->json([
+                'message' => 'Developer must be assigned to the project before being assigned to the task',
+            ], 422);
+        }
+
         // Check if assignment already exists
         $existingAssignment = DeveloperTask::where('developer_id', $validated['developer_id'])
             ->where('task_id', $validated['task_id'])
@@ -269,6 +279,18 @@ class DeveloperTaskController extends Controller
 
         $assignments = [];
         foreach ($validated['developers'] as $dev) {
+            $isAssignedToProject = Developer::whereKey($dev['developer_id'])
+                ->whereHas('projects', function ($query) use ($task): void {
+                    $query->where('projects.id', $task->project_id);
+                })
+                ->exists();
+
+            if (! $isAssignedToProject) {
+                return response()->json([
+                    'message' => "Developer {$dev['developer_id']} must be assigned to project {$task->project_id} first",
+                ], 422);
+            }
+
             $existingAssignment = DeveloperTask::where('developer_id', $dev['developer_id'])
                 ->where('task_id', $taskId)
                 ->first();

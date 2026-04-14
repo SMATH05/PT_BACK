@@ -1,0 +1,167 @@
+\documentclass[12pt,a4paper,oneside]{report}
+
+% =============================================
+% PACKAGES
+% =============================================
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{geometry}
+\geometry{top=2.5cm, bottom=2.5cm, left=3cm, right=2.5cm}
+\usepackage{graphicx}
+\usepackage{setspace}
+\onehalfspacing
+\usepackage{hyperref}
+\usepackage{titlesec}
+\usepackage{fancyhdr}
+\usepackage{amsmath, amssymb}
+\usepackage{listings}
+\usepackage[table]{xcolor}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{enumitem}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{tocloft}
+\usepackage{pifont}
+\usepackage{mdframed}
+\usepackage{tikz}
+\usetikzlibrary{calc}
+\usepackage{microtype}
+\usepackage{colortbl}
+
+% =============================================
+% COULEURS EMSI
+% =============================================
+\definecolor{emsiRed}{RGB}{200, 30, 40}
+\definecolor{emsiDark}{RGB}{30, 30, 60}
+\definecolor{emsiGray}{RGB}{240, 240, 245}
+\definecolor{codeBackground}{RGB}{248, 248, 252}
+\definecolor{codeBorder}{RGB}{180, 180, 200}
+\definecolor{codeKeyword}{RGB}{0, 100, 180}
+\definecolor{codeString}{RGB}{152, 55, 30}
+\definecolor{codeComment}{RGB}{130, 130, 130}
+
+% =============================================
+% STYLE DES CHAPITRES
+% =============================================
+\titleformat{\chapter}[display]
+  {\normalfont\huge\bfseries\color{emsiDark}}
+  {\colorbox{emsiRed}{\color{white}\chaptertitlename\ \thechapter}}
+  {20pt}{\Huge}
+\titlespacing{\chapter}{0pt}{0pt}{40pt}
+
+\titleformat{\section}
+  {\normalfont\Large\bfseries\color{emsiDark}}
+  {\color{emsiRed}\thesection}{1em}{}
+\titleformat{\subsection}
+  {\normalfont\large\bfseries\color{emsiDark}}
+  {\color{emsiRed}\thesubsection}{1em}{}
+
+% =============================================
+% EN-TETES / PIEDS DE PAGE
+% =============================================
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\color{emsiDark}\textbf{PT\_BACK} --- Gestion de Projets}
+\fancyhead[R]{\small\color{emsiRed}EMSI Maroc}
+\fancyfoot[C]{\thepage}
+\fancyfoot[R]{\small\color{emsiDark}2025--2026}
+\renewcommand{\headrulewidth}{0.5pt}
+\renewcommand{\headrule}{\hbox to\headwidth{\color{emsiRed}\leaders\hrule height \headrulewidth\hfill}}
+
+% =============================================
+% STYLE DES LISTINGS DE CODE
+% =============================================
+\lstset{
+  backgroundcolor=\color{codeBackground},
+  basicstyle=\small\ttfamily\color{emsiDark},
+  keywordstyle=\bfseries\color{codeKeyword},
+  stringstyle=\color{codeString},
+  commentstyle=\itshape\color{codeComment},
+  frame=single,
+  rulecolor=\color{codeBorder},
+  breaklines=true,
+  showstringspaces=false,
+  numbers=left,
+  numberstyle=\tiny\color{gray},
+  captionpos=b,
+  tabsize=4,
+}
+\lstdefinelanguage{PHP_Laravel}{
+  language=PHP,
+  morekeywords={Route, Request, response, json, validate, create, update, delete, find, with, where, get},
+}
+
+% =============================================
+% CONFIGURATION HYPERREF
+% =============================================
+\hypersetup{
+    colorlinks=true,
+    linkcolor=emsiRed,
+    filecolor=emsiDark,
+    urlcolor=blue,
+    citecolor=emsiDark,
+    pdftitle={Rapport PFA - PT BACK - EMSI Maroc},
+    pdfauthor={Etudiant EMSI},
+    pdfsubject={Projet de Fin Annee},
+}
+
+% =============================================
+% DEBUT DU DOCUMENT
+% =============================================
+\begin{document}
+
+% ---- PAGE DE GARDE ----
+\input{sections/titlepage}
+
+% ---- PAGES LIMINAIRES ----
+\pagenumbering{roman}
+\setcounter{page}{1}
+
+\input{sections/dedicaces}
+\input{sections/remerciements}
+\input{sections/abstract}
+
+% ---- TABLES ----
+\tableofcontents
+\listoffigures
+\listoftables
+
+\newpage
+\pagenumbering{arabic}
+\setcounter{page}{1}
+
+% ---- CHAPITRES ----
+\input{sections/introduction}
+\input{sections/contexte}
+\input{sections/analyse}
+\input{sections/conception}
+\input{sections/realisation}
+\input{sections/conclusion}
+
+% ---- BIBLIOGRAPHIE ----
+\begin{thebibliography}{99}
+\bibitem{laravel}
+Taylor Otwell. \textit{Laravel Documentation}. \url{https://laravel.com/docs}, 2025.
+
+\bibitem{keycloak}
+Red Hat, Inc. \textit{Keycloak Documentation}. \url{https://www.keycloak.org/docs/}, 2025.
+
+\bibitem{rest}
+Roy T. Fielding. \textit{Architectural Styles and the Design of Network-based Software Architectures}. University of California, Irvine, 2000.
+
+\bibitem{uml}
+Grady Booch, James Rumbaugh, Ivar Jacobson. \textit{The Unified Modeling Language User Guide}, 2\textsuperscript{e} edition. Addison-Wesley, 2005.
+
+\bibitem{mvc}
+Martin Fowler. \textit{Patterns of Enterprise Application Architecture}. Addison-Wesley, 2003.
+
+\bibitem{php}
+The PHP Group. \textit{PHP Manual}. \url{https://www.php.net/manual/}, 2025.
+\end{thebibliography}
+
+\end{document}

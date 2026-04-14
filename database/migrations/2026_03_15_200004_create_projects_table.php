@@ -11,12 +11,22 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasTable('projects')) {
+            return;
+        }
+
         Schema::create('projects', function (Blueprint $table) {
             $table->id();
             $table->string('name');
-            $table->date('deadline');
+            $table->string('client');
+            $table->date('start_date');
+            $table->date('end_date');
+            $table->date('deadline')->nullable();
+            $table->enum('status', ['pending', 'in_progress', 'done'])->default('pending');
+            $table->text('description')->nullable();
             $table->foreignId('manager_id')->constrained('managers')->cascadeOnDelete();
             $table->foreignId('chef_de_projet_id')->constrained('chef_de_projets')->cascadeOnDelete();
+            $table->string('folder_path')->nullable();
             $table->timestamps();
             $table->softDeletes();
         });

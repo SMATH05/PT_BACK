@@ -1,0 +1,79 @@
+% =============================================
+% CHAPITRE 2 : ANALYSE DES BESOINS
+% =============================================
+\chapter{Analyse et Sp\'{e}cification des Besoins}
+
+\section{Introduction}
+L'analyse des besoins est une \'{e}tape cruciale dans le cycle de d\'{e}veloppement logiciel.
+Elle permet de d\'{e}limiter le p\'{e}rim\`{e}tre du projet et de d\'{e}crire avec pr\'{e}cision ce que
+le syst\`{e}me doit accomplir. Dans cette section, nous identifions les acteurs
+principaux et d\'{e}taillons les besoins fonctionnels et non-fonctionnels de l'application \textbf{PT\_BACK}.
+
+\section{Identification des acteurs}
+Le syst\`{e}me interagit avec trois profils utilisateurs distincts, chacun poss\'{e}dant un
+niveau d'habilitation sp\'{e}cifique :
+
+\begin{itemize}[leftmargin=*, label=\textcolor{emsiRed}{\ding{118}}]
+  \item \textbf{Manager} : Acteur principal responsable de la cr\'{e}ation des projets,
+  de l'affectation des chefs de projets et des d\'{e}veloppeurs, ainsi que du suivi global.
+  \item \textbf{Chef de Projet} : Responsable du suivi op\'{e}rationnel d'un ou plusieurs projets.
+  Il g\`{e}re les t\^{a}ches, valide le travail des d\'{e}veloppeurs et assure le respect des \textbf{SLA}.
+  \item \textbf{D\'{e}veloppeur} : Ex\'{e}cutant des t\^{a}ches. Il consulte ses assignations et met \`{a}
+  jour le statut d'avancement de ses d\'{e}veloppements.
+\end{itemize}
+
+\section{Sp\'{e}cification des besoins fonctionnels}
+
+Les besoins fonctionnels d\'{e}crivent les fonctionnalit\'{e}s offertes par le syst\`{e}me.
+Nous les avons regroup\'{e}s par p\'{e}rim\`{e}tre fonctionnel.
+
+\subsection{Gestion des Projets et des Espaces de Travail}
+\begin{itemize}[leftmargin=*]
+    \item Le syst\`{e}me doit permettre au \textit{Manager} de cr\'{e}er, modifier et supprimer des projets.
+    \item Lors de la cr\'{e}ation d'un projet, un dossier d'espace de travail structur\'{e}
+    (avec \texttt{docs/}, \texttt{src/}, \texttt{tasks/}, etc.) doit \^{e}tre automatiquement g\'{e}n\'{e}r\'{e}.
+    \item Le syst\`{e}me doit \'{e}galement g\'{e}n\'{e}rer un fichier \texttt{README.md} r\'{e}capitulatif localement.
+\end{itemize}
+
+\subsection{Gestion des Ressources et Assignations}
+\begin{itemize}[leftmargin=*]
+    \item Le \textit{Manager} doit pouvoir affecter un \textit{Chef de Projet} et une \'{e}quipe de
+    \textit{D\'{e}veloppeurs} \`{a} un projet existant.
+    \item Ces assignations peuvent s'op\'{e}rer de mani\`{e}re \textbf{transactionnelle} en masse (Bulk Assignment).
+\end{itemize}
+
+\subsection{Gestion des T\^{a}ches}
+\begin{itemize}[leftmargin=*]
+    \item Les t\^{a}ches doivent \^{e}tre associ\'{e}es \`{a} un projet et poss\'{e}der un statut
+    (\texttt{pending}, \texttt{in\_progress}, \texttt{done}).
+    \item Le \textit{Chef de Projet} ou le \textit{Manager} peut assigner des t\^{a}ches aux D\'{e}veloppeurs.
+    \item La validation finale d'une t\^{a}che incombe au \textit{Chef de Projet}.
+\end{itemize}
+
+\subsection{Gestion des SLA (Service Level Agreements)}
+\begin{itemize}[leftmargin=*]
+    \item Le syst\`{e}me permet de d\'{e}finir des crit\`{e}res SLA complexes au niveau du projet
+    (ex: \textit{Response Time < 1h}) et au niveau des t\^{a}ches.
+\end{itemize}
+
+\section{Sp\'{e}cification des besoins non-fonctionnels}
+
+Les exigences non-fonctionnelles d\'{e}finissent les crit\`{e}res de qualit\'{e} du syst\`{e}me :
+
+\begin{itemize}[leftmargin=*, label=\textcolor{emsiRed}{\ding{118}}]
+    \item \textbf{S\'{e}curit\'{e} et Authentification} : Toutes les requ\^{e}tes doivent \^{e}tre
+    authentifi\'{e}es et autoris\'{e}es via l'utilisation de \textbf{tokens JWT} \'{e}mis par un
+    serveur \textbf{Keycloak} externe.
+    \item \textbf{Performance} : L'API doit garantir des temps de r\'{e}ponse inf\'{e}rieurs
+    \`{a} 200~ms gr\^{a}ce \`{a} une structuration RESTful \'{e}pur\'{e}e.
+    \item \textbf{Fiabilit\'{e} des donn\'{e}es} : Utilisation des Transactions SQL (DB Transactions)
+    pour les op\'{e}rations complexes (les assignations en masse) afin de garantir la
+    coh\'{e}sion des donn\'{e}es en cas de d\'{e}faillance ponctuelle.
+    \item \textbf{Maintenabilit\'{e}} : Le code est orient\'{e} objet (MVC), respectant les
+    standards \textbf{PSR} pour PHP, et document\'{e}.
+\end{itemize}
+
+\section{Conclusion}
+Cette analyse nous a permis de structurer la base de travail. Les cas
+d'utilisation s'\'{e}tant clari\'{e}s, nous pouvons proc\'{e}der \`{a} la mod\'{e}lisation
+de la solution dans le chapitre suivant.

@@ -1,0 +1,130 @@
+% =============================================
+% CHAPITRE 1 : CONTEXTE ET PRESENTATION
+% =============================================
+\chapter{Contexte et Pr\'{e}sentation du Projet}
+
+\section{Pr\'{e}sentation de l'organisme d'accueil}
+
+\subsection{L'EMSI --- \'{E}cole Marocaine des Sciences de l'Ing\'{e}nieur}
+
+L'\textbf{\'{E}cole Marocaine des Sciences de l'Ing\'{e}nieur (EMSI)} est un \'{e}tablissement
+d'enseignement sup\'{e}rieur priv\'{e} marocain fond\'{e} en 1986. Pionni\`{e}re de la formation
+en ing\'{e}nierie informatique au Maroc, l'EMSI propose des cursus de 5 ans sanctionn\'{e}s
+par un dipl\^{o}me d'ing\'{e}nieur d'\'{E}tat, reconnu par l'\'{E}tat marocain et accr\'{e}dit\'{e} par
+le Minist\`{e}re de l'\'{E}ducation Nationale.
+
+Avec ses multiples campus r\'{e}partis \`{a} travers le Royaume (Casablanca, Rabat, Marrakech,
+F\`{e}s, Oujda, Agadir), l'EMSI accompagne chaque ann\'{e}e des milliers d'\'{e}tudiants dans
+leur cursus d'ing\'{e}nierie, avec des fili\`{e}res reconnues en :
+\begin{itemize}[leftmargin=*, label=\textcolor{emsiRed}{\textbullet}]
+  \item G\'{e}nie Logiciel et Syst\`{e}mes d'Information
+  \item Intelligence Artificielle et Data Science
+  \item R\'{e}seaux et T\'{e}l\'{e}communications
+  \item Cybers\'{e}curit\'{e}
+\end{itemize}
+
+\subsection{Pr\'{e}sentation de l'entreprise d'accueil}
+
+\textit{[A compl\'{e}ter avec le nom, secteur, localisation et missions de votre entreprise de stage.]}
+
+\vspace{0.5cm}
+\begin{table}[H]
+\centering
+\caption{Fiche signal\'{e}tique de l'entreprise}
+\begin{tabular}{|>{\bfseries\color{emsiDark}}l|l|}
+\hline
+\rowcolor{emsiRed!15}
+Raison Sociale     & [Nom de l'entreprise] \\
+\hline
+Secteur d'activit\'{e} & [Secteur] \\
+\hline
+Si\`{e}ge social       & [Ville, Maroc] \\
+\hline
+Site Web           & [www.entreprise.ma] \\
+\hline
+Effectif           & [Nombre] collaborateurs \\
+\hline
+Encadrant          & M./Mme [Pr\'{e}nom Nom] \\
+\hline
+\end{tabular}
+\end{table}
+
+\section{Cadre et objectifs du stage}
+
+Ce Projet de Fin d'Ann\'{e}e (PFA) a \'{e}t\'{e} r\'{e}alis\'{e} sur une dur\'{e}e de \textbf{[X] mois},
+de \textit{[Mois D\'{e}but]} \`{a} \textit{[Mois Fin]} 2025--2026. La mission principale
+confi\'{e}e \'{e}tait la conception et le d\'{e}veloppement from scratch d'un syst\`{e}me de
+gestion de projets collaboratifs sous forme d'API REST, nomm\'{e} \textbf{PT\_BACK}.
+
+\section{M\'{e}thodologie de travail}
+
+\subsection{M\'{e}thode Agile - Scrum}
+
+Pour mener \`{a} bien ce projet, nous avons adopt\'{e} une approche \textbf{Agile} inspir\'{e}e du
+framework \textbf{Scrum}, permettant une livraison it\'{e}rative et incr\'{e}mentale des fonctionnalit\'{e}s.
+Le d\'{e}veloppement a \'{e}t\'{e} d\'{e}coup\'{e} en \textit{sprints} de deux semaines, chacun aboutissant
+\`{a} une version fonctionnelle et test\'{e}e du logiciel.
+
+\begin{table}[H]
+\centering
+\caption{Planification des sprints}
+\begin{tabular}{|c|l|l|}
+\hline
+\rowcolor{emsiRed!15}
+\textbf{Sprint} & \textbf{Objectifs} & \textbf{Dur\'{e}e} \\
+\hline
+Sprint 1 & Mise en place de l'environnement, mod\`{e}le de donn\'{e}es & 2 semaines \\
+\hline
+Sprint 2 & Modules Manager et Projet (CRUD) & 2 semaines \\
+\hline
+Sprint 3 & Modules Chef de Projet et T\^{a}ches & 2 semaines \\
+\hline
+Sprint 4 & Module D\'{e}veloppeur, Assignations & 2 semaines \\
+\hline
+Sprint 5 & SLA, Statistiques, Export, Fichiers & 2 semaines \\
+\hline
+Sprint 6 & Int\'{e}gration Keycloak, Tests \& Documentation & 2 semaines \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsection{Outils de gestion de projet}
+
+\begin{itemize}[leftmargin=*, label=\textcolor{emsiRed}{\ding{118}}]
+  \item \textbf{Git / GitHub} : Contr\^{o}le de version et collaboration.
+  \item \textbf{Postman} : Test et documentation des endpoints API.
+  \item \textbf{PHPUnit} : Tests unitaires et d'int\'{e}gration.
+  \item \textbf{VS Code} : Environnement de d\'{e}veloppement principal.
+  \item \textbf{Docker / Docker Compose} : Conteneurisation de l'environnement.
+\end{itemize}
+
+\section{Environnement technologique}
+
+\begin{table}[H]
+\centering
+\caption{Stack technique du projet PT\_BACK}
+\begin{tabular}{|>{\bfseries}l|l|l|}
+\hline
+\rowcolor{emsiRed!15}
+\textbf{Cat\'{e}gorie} & \textbf{Technologie} & \textbf{Version} \\
+\hline
+Framework Back-end  & Laravel         & 11.x \\
+\hline
+Langage             & PHP             & 8.3+ \\
+\hline
+Base de donn\'{e}es     & MySQL           & 8.0 \\
+\hline
+Authentification    & Keycloak        & 24.x \\
+\hline
+Serveur HTTP        & Nginx / Apache  & --- \\
+\hline
+Conteneurisation    & Docker          & 25.x \\
+\hline
+Versionnement       & Git / GitHub    & --- \\
+\hline
+Tests               & PHPUnit         & 11.x \\
+\hline
+Documentation API   & Postman         & --- \\
+\hline
+\end{tabular}
+\end{table}

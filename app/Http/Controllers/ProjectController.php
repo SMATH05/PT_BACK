@@ -14,7 +14,7 @@ class ProjectController extends Controller
      */
     public function index()
     {
-        $projects = Project::with('manager', 'chefDeProjet', 'tasks', 'developers')->get();
+        $projects = Project::with('manager', 'chefDeProjet', 'tasks', 'developers', 'slaProject', 'files')->get();
         return response()->json($projects);
     }
 
@@ -46,11 +46,23 @@ class ProjectController extends Controller
 
         $validated = $request->validate([
             'name' => 'sometimes|required|string|max:255',
+            'client' => 'sometimes|required|string|max:255',
             'description' => 'sometimes|nullable|string',
-            'deadline' => 'sometimes|nullable|date|after:today',
+            'start_date' => 'sometimes|nullable|date',
+            'end_date' => 'sometimes|nullable|date|after_or_equal:start_date',
+            'deadline' => 'sometimes|nullable|date|after_or_equal:start_date',
+            'status' => 'sometimes|required|string|in:pending,in_progress,done',
             'manager_id' => 'sometimes|required|exists:managers,id',
             'chef_de_projet_id' => 'sometimes|nullable|exists:chef_de_projets,id',
         ]);
+
+        if (!array_key_exists('end_date', $validated) && array_key_exists('deadline', $validated)) {
+            $validated['end_date'] = $validated['deadline'];
+        }
+
+        if (!array_key_exists('deadline', $validated) && array_key_exists('end_date', $validated)) {
+            $validated['deadline'] = $validated['end_date'];
+        }
 
         $project->update($validated);
 
@@ -129,7 +141,7 @@ class ProjectController extends Controller
             'project_name' => $project->name,
             'total_tasks' => $project->tasks()->count(),
             'total_developers' => $project->developers()->count(),
-            'completed_tasks' => $project->tasks()->where('status', 'completed')->count(),
+            'completed_tasks' => $project->tasks()->whereIn('status', ['done', 'completed'])->count(),
             'pending_tasks' => $project->tasks()->where('status', 'pending')->count(),
             'in_progress_tasks' => $project->tasks()->where('status', 'in_progress')->count(),
             'has_chef_de_projet' => $project->chef_de_projet_id !== null,
@@ -152,7 +164,7 @@ class ProjectController extends Controller
         }
 
         $totalTasks = $project->tasks()->count();
-        $completedTasks = $project->tasks()->where('status', 'completed')->count();
+        $completedTasks = $project->tasks()->whereIn('status', ['done', 'completed'])->count();
         $inProgressTasks = $project->tasks()->where('status', 'in_progress')->count();
         $pendingTasks = $project->tasks()->where('status', 'pending')->count();
 
@@ -223,14 +235,32 @@ class ProjectController extends Controller
         }
 
         $validated = $request->validate([
-            'response_time_hours' => 'required|integer|min:1',
-            'resolution_time_days' => 'required|integer|min:1',
-            'priority_level' => 'required|string|in:low,medium,high,critical',
+            'name' => 'sometimes|nullable|string|max:255',
+            'response_time_hours' => 'sometimes|nullable|integer|min:1',
+            'resolution_time_days' => 'sometimes|nullable|integer|min:1',
+            'max_response_time' => 'sometimes|nullable|integer|min:1',
+            'max_resolution_time' => 'sometimes|nullable|integer|min:1',
+            'priority_level' => 'sometimes|nullable|string|in:low,medium,high,critical',
+            'priority' => 'sometimes|nullable|string|in:low,medium,high,critical',
         ]);
+
+        $payload = [
+            'name' => $validated['name'] ?? sprintf('%s SLA', $project->name),
+            'max_response_time' => $validated['max_response_time'] ?? $validated['response_time_hours'] ?? null,
+            'max_resolution_time' => $validated['max_resolution_time'] ?? $validated['resolution_time_days'] ?? null,
+            'priority' => $validated['priority'] ?? $validated['priority_level'] ?? null,
+        ];
+
+        validator($payload, [
+            'name' => 'required|string|max:255',
+            'max_response_time' => 'required|integer|min:1',
+            'max_resolution_time' => 'required|integer|min:1',
+            'priority' => 'required|string|in:low,medium,high,critical',
+        ])->validate();
 
         $sla = $project->slaProject()->updateOrCreate(
             ['project_id' => $projectId],
-            $validated
+            $payload
         );
 
         return response()->json([
@@ -252,7 +282,20 @@ class ProjectController extends Controller
 
         $files = $project->files()->get();
 
-        return response()->json($files);
+        return response()->json($files->map(function ($file) use ($projectId): array {
+            return [
+                'id' => $file->id,
+                'project_id' => $file->project_id,
+                'filename' => $file->filename,
+                'filepath' => $file->filepath,
+                'disk' => $file->disk ?? config('filesystems.default', 'local'),
+                'mime_type' => $file->mime_type,
+                'size' => $file->size,
+                'view_url' => url("/api/projects/{$projectId}/files/{$file->id}"),
+                'download_url' => url("/api/projects/{$projectId}/files/{$file->id}/download"),
+                'created_at' => $file->created_at,
+            ];
+        }));
     }
 
     /**

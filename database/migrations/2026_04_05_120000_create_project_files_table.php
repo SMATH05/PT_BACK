@@ -11,18 +11,19 @@ return new class extends Migration
      */
     public function up(): void
     {
-        if (Schema::hasTable('developer_project')) {
+        if (Schema::hasTable('project_files')) {
             return;
         }
 
-        Schema::create('developer_project', function (Blueprint $table) {
-            $table->foreignId('developer_id')->constrained('developers')->cascadeOnDelete();
+        Schema::create('project_files', function (Blueprint $table): void {
+            $table->id();
             $table->foreignId('project_id')->constrained('projects')->cascadeOnDelete();
-            $table->string('position');
-            $table->timestamp('joined_at')->nullable();
+            $table->string('filename');
+            $table->string('filepath');
+            $table->string('disk')->default('local');
+            $table->string('mime_type')->nullable();
+            $table->unsignedBigInteger('size')->nullable();
             $table->timestamps();
-
-            $table->primary(['developer_id', 'project_id']);
         });
     }
 
@@ -31,6 +32,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('developer_project');
+        Schema::dropIfExists('project_files');
     }
 };

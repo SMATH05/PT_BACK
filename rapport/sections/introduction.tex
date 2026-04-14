@@ -1,0 +1,54 @@
+% =============================================
+% INTRODUCTION GÉNÉRALE
+% =============================================
+\chapter*{Introduction Générale}
+\addcontentsline{toc}{chapter}{Introduction Générale}
+\thispagestyle{fancy}
+
+\section*{Contexte général}
+
+Dans un monde où le développement logiciel s'accélère et où les organisations gèrent
+simultanément de multiples projets impliquant des équipes distribuées, la maîtrise des
+flux de travail et de la collaboration devient un enjeu stratégique majeur. Les outils
+de gestion de projets existants, bien que variés, présentent souvent des limites en
+termes de personnalisation, d'intégration avec des systèmes d'authentification d'entreprise
+et de gestion fine des rôles et des responsabilités.
+
+C'est dans ce contexte que s'inscrit le présent projet de fin d'année, réalisé
+à l'\textbf{École Marocaine des Sciences de l'Ingénieur (EMSI)}, visant à concevoir
+et développer une solution back-end complète pour la \textbf{gestion de projets collaboratifs}.
+
+\section*{Problématique}
+
+Comment concevoir une API RESTful robuste, sécurisée et extensible permettant
+de gérer l'ensemble du cycle de vie d'un projet logiciel, tout en supportant
+une hiérarchie de rôles claire et en garantissant la conformité aux accords
+de niveau de service (SLA) définis ?
+
+\section*{Objectifs du projet}
+
+Ce projet vise à atteindre les objectifs suivants :
+
+\begin{itemize}[leftmargin=*, label=\textcolor{emsiRed}{\ding{118}}]
+  \item Concevoir une architecture d'API REST maintenable et évolutive avec \textbf{Laravel}.
+  \item Implémenter un système de \textbf{gestion multi-rôles} (Manager, Chef de Projet, Développeur).
+  \item Intégrer une authentification centralisée et sécurisée via \textbf{Keycloak/JWT}.
+  \item Gérer le cycle de vie complet des projets et des tâches avec suivi des \textbf{SLA}.
+  \item Fournir des \textbf{statistiques et exports} de données pour le pilotage décisionnel.
+  \item Automatiser la création d'espaces de travail de projet (\textit{workspace scaffolding}).
+\end{itemize}
+
+\section*{Structure du rapport}
+
+Ce rapport est organisé en cinq chapitres :
+
+\begin{enumerate}[leftmargin=*, label=\textcolor{emsiRed}{\textbf{Chapitre \arabic*.}}]
+  \item \textbf{Contexte et Présentation du Projet} --- Présentation de l'organisme d'accueil,
+    de l'environnement technique et de la méthodologie adoptée.
+  \item \textbf{Analyse et Spécification des Besoins} --- Identification des acteurs,
+    des cas d'utilisation et des exigences fonctionnelles et non-fonctionnelles.
+  \item \textbf{Conception} --- Modélisation UML, architecture logicielle et modèle de données.
+  \item \textbf{Réalisation et Tests} --- Présentation de l'implémentation, des fonctionnalités
+    clés et des tests effectués.
+  \item \textbf{Conclusion et Perspectives} --- Bilan du travail réalisé et pistes d'évolution futures.
+\end{enumerate}

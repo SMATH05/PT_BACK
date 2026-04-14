@@ -7,11 +7,10 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Task extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory;
 
     /**
      * The attributes that are mass assignable.
@@ -21,6 +20,7 @@ class Task extends Model
     protected $fillable = [
         'title',
         'goal',
+        'description',
         'status',
         'project_id',
         'chef_de_projet_id',
@@ -61,10 +61,33 @@ class Task extends Model
     }
 
     /**
+     * Keep legacy "goal" and newer "description" fields aligned.
+     */
+    public function setDescriptionAttribute(?string $value): void
+    {
+        $this->attributes['description'] = $value;
+
+        if (array_key_exists('goal', $this->attributes) || $value !== null) {
+            $this->attributes['goal'] = $value;
+        }
+    }
+
+    /**
+     * Keep legacy "goal" and newer "description" fields aligned.
+     */
+    public function setGoalAttribute(?string $value): void
+    {
+        $this->attributes['goal'] = $value;
+        $this->attributes['description'] = $value;
+    }
+
+    /**
      * Update the status of this task.
      */
     public function updateStatus(string $status): bool
     {
-        return $this->update(['status' => $status]);
+        $normalizedStatus = $status === 'completed' ? 'done' : $status;
+
+        return $this->update(['status' => $normalizedStatus]);
     }
 }
