@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\InteractsWithActorScope;
 use App\Models\Project;
 use App\Models\Task;
 use Illuminate\Http\Request;
@@ -9,24 +10,33 @@ use Illuminate\Support\Facades\Storage;
 
 class ProjectController extends Controller
 {
+    use InteractsWithActorScope;
+
     /**
      * Get all projects
      */
-    public function index()
+    public function index(Request $request)
     {
-        $projects = Project::with('manager', 'chefDeProjet', 'tasks', 'developers', 'slaProject', 'files')->get();
+        $projects = $this->scopedProjectsQuery($request)
+            ->with('manager', 'chefDeProjet', 'tasks', 'developers', 'slaProject', 'files')
+            ->get();
+
         return response()->json($projects);
     }
 
     /**
      * Get a specific project
      */
-    public function show($id)
+    public function show(Request $request, $id)
     {
         $project = Project::with('manager', 'chefDeProjet', 'tasks', 'developers', 'slaProject')->find($id);
 
         if (!$project) {
             return response()->json(['message' => 'Project not found'], 404);
+        }
+
+        if (! $this->canAccessProject($request, $project)) {
+            return response()->json(['message' => 'Forbidden'], 403);
         }
 
         return response()->json($project);
@@ -42,6 +52,10 @@ class ProjectController extends Controller
 
         if (!$project) {
             return response()->json(['message' => 'Project not found'], 404);
+        }
+
+        if (! $this->canManageProject($request, $project)) {
+            return response()->json(['message' => 'Forbidden'], 403);
         }
 
         $validated = $request->validate([
@@ -75,12 +89,16 @@ class ProjectController extends Controller
     /**
      * Delete a project
      */
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
         $project = Project::find($id);
 
         if (!$project) {
             return response()->json(['message' => 'Project not found'], 404);
+        }
+
+        if (! $this->canManageProject($request, $project)) {
+            return response()->json(['message' => 'Forbidden'], 403);
         }
 
         // Delete the project folder if it exists
@@ -96,12 +114,16 @@ class ProjectController extends Controller
     /**
      * Get tasks for a project
      */
-    public function getTasks($projectId)
+    public function getTasks(Request $request, $projectId)
     {
         $project = Project::find($projectId);
 
         if (!$project) {
             return response()->json(['message' => 'Project not found'], 404);
+        }
+
+        if (! $this->canAccessProject($request, $project)) {
+            return response()->json(['message' => 'Forbidden'], 403);
         }
 
         $tasks = $project->tasks()->with('chefDeProjet', 'developers')->get();
@@ -112,12 +134,16 @@ class ProjectController extends Controller
     /**
      * Get developers for a project
      */
-    public function getDevelopers($projectId)
+    public function getDevelopers(Request $request, $projectId)
     {
         $project = Project::find($projectId);
 
         if (!$project) {
             return response()->json(['message' => 'Project not found'], 404);
+        }
+
+        if (! $this->canAccessProject($request, $project)) {
+            return response()->json(['message' => 'Forbidden'], 403);
         }
 
         $developers = $project->developers()->get();
@@ -128,12 +154,16 @@ class ProjectController extends Controller
     /**
      * Get project statistics
      */
-    public function statistics($projectId)
+    public function statistics(Request $request, $projectId)
     {
         $project = Project::find($projectId);
 
         if (!$project) {
             return response()->json(['message' => 'Project not found'], 404);
+        }
+
+        if (! $this->canAccessProject($request, $project)) {
+            return response()->json(['message' => 'Forbidden'], 403);
         }
 
         $stats = [
@@ -155,12 +185,16 @@ class ProjectController extends Controller
     /**
      * Get project progress
      */
-    public function progress($projectId)
+    public function progress(Request $request, $projectId)
     {
         $project = Project::find($projectId);
 
         if (!$project) {
             return response()->json(['message' => 'Project not found'], 404);
+        }
+
+        if (! $this->canAccessProject($request, $project)) {
+            return response()->json(['message' => 'Forbidden'], 403);
         }
 
         $totalTasks = $project->tasks()->count();
@@ -184,12 +218,16 @@ class ProjectController extends Controller
     /**
      * Get project timeline
      */
-    public function timeline($projectId)
+    public function timeline(Request $request, $projectId)
     {
         $project = Project::find($projectId);
 
         if (!$project) {
             return response()->json(['message' => 'Project not found'], 404);
+        }
+
+        if (! $this->canAccessProject($request, $project)) {
+            return response()->json(['message' => 'Forbidden'], 403);
         }
 
         $timeline = [
@@ -206,12 +244,16 @@ class ProjectController extends Controller
     /**
      * Get project SLA
      */
-    public function getSla($projectId)
+    public function getSla(Request $request, $projectId)
     {
         $project = Project::find($projectId);
 
         if (!$project) {
             return response()->json(['message' => 'Project not found'], 404);
+        }
+
+        if (! $this->canAccessProject($request, $project)) {
+            return response()->json(['message' => 'Forbidden'], 403);
         }
 
         $sla = $project->slaProject;
@@ -232,6 +274,10 @@ class ProjectController extends Controller
 
         if (!$project) {
             return response()->json(['message' => 'Project not found'], 404);
+        }
+
+        if (! $this->canManageProject($request, $project)) {
+            return response()->json(['message' => 'Forbidden'], 403);
         }
 
         $validated = $request->validate([
@@ -272,12 +318,16 @@ class ProjectController extends Controller
     /**
      * Get project files
      */
-    public function getFiles($projectId)
+    public function getFiles(Request $request, $projectId)
     {
         $project = Project::find($projectId);
 
         if (!$project) {
             return response()->json(['message' => 'Project not found'], 404);
+        }
+
+        if (! $this->canAccessProject($request, $project)) {
+            return response()->json(['message' => 'Forbidden'], 403);
         }
 
         $files = $project->files()->get();
@@ -301,12 +351,16 @@ class ProjectController extends Controller
     /**
      * Export project data
      */
-    public function exportData($projectId)
+    public function exportData(Request $request, $projectId)
     {
         $project = Project::with('manager', 'chefDeProjet', 'tasks', 'developers', 'slaProject')->find($projectId);
 
         if (!$project) {
             return response()->json(['message' => 'Project not found'], 404);
+        }
+
+        if (! $this->canManageProject($request, $project)) {
+            return response()->json(['message' => 'Forbidden'], 403);
         }
 
         $data = [

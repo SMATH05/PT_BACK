@@ -24,7 +24,8 @@ class TaskFactory extends Factory
         return [
             'title'             => fake()->sentence(4),
             'goal'              => fake()->paragraph(),
-            'status'            => fake()->randomElement(['pending', 'in_progress', 'completed', 'validated']),
+            'description'       => fake()->paragraph(),
+            'status'            => fake()->randomElement(['pending', 'in_progress', 'done']),
             'project_id'        => Project::factory(),
             'chef_de_projet_id' => ChefDeProjet::factory(),
         ];

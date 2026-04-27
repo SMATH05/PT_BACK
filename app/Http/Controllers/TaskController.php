@@ -2,25 +2,35 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\InteractsWithActorScope;
 use App\Models\Task;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
 
 class TaskController extends Controller
 {
-    public function index()
+    use InteractsWithActorScope;
+
+    public function index(Request $request)
     {
         return response()->json(
-            Task::with(['project', 'chefDeProjet', 'developers', 'slaTask'])->get()
+            $this->scopedTasksQuery($request)
+                ->with(['project', 'chefDeProjet', 'developers', 'slaTask'])
+                ->get()
         );
     }
 
-    public function show($id)
+    public function show(Request $request, $id)
     {
         $task = Task::with(['project', 'chefDeProjet', 'developers', 'slaTask'])->find($id);
 
         if (! $task) {
             return response()->json(['message' => 'Task not found'], 404);
+        }
+
+        if (! $this->canAccessTask($request, $task)) {
+            return response()->json(['message' => 'Forbidden'], 403);
         }
 
         return response()->json($task);
@@ -42,13 +52,17 @@ class TaskController extends Controller
             return response()->json(['message' => 'Task not found'], 404);
         }
 
+        if (! $this->canManageTask($request, $task)) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
         $validated = $request->validate($this->taskRules(true));
         $task->update($this->normalizeTaskPayload($validated));
 
         return response()->json($task->load(['project', 'chefDeProjet', 'developers', 'slaTask']));
     }
 
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
         $task = Task::find($id);
 
@@ -56,13 +70,21 @@ class TaskController extends Controller
             return response()->json(['message' => 'Task not found'], 404);
         }
 
+        if (! $this->canManageTask($request, $task)) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
         $task->delete();
 
         return response()->json(['message' => 'Task deleted successfully']);
     }
 
-    public function tasksByChefDeProjet($chefDeProjetId)
+    public function tasksByChefDeProjet(Request $request, $chefDeProjetId)
     {
+        if ($this->userHasRole($request, 'chef_de_projet') && $this->currentChefDeProjetId($request) !== (int) $chefDeProjetId) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
         return response()->json(
             Task::with(['project', 'developers', 'slaTask'])
                 ->where('chef_de_projet_id', $chefDeProjetId)
@@ -70,17 +92,22 @@ class TaskController extends Controller
         );
     }
 
-    public function tasksByStatus($status)
+    public function tasksByStatus(Request $request, $status)
     {
         return response()->json(
-            Task::with(['project', 'chefDeProjet', 'developers', 'slaTask'])
+            $this->scopedTasksQuery($request)
+                ->with(['project', 'chefDeProjet', 'developers', 'slaTask'])
                 ->where('status', $this->normalizeStatus($status))
                 ->get()
         );
     }
 
-    public function tasksByChefDeProjetAndStatus($chefDeProjetId, $status)
+    public function tasksByChefDeProjetAndStatus(Request $request, $chefDeProjetId, $status)
     {
+        if ($this->userHasRole($request, 'chef_de_projet') && $this->currentChefDeProjetId($request) !== (int) $chefDeProjetId) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
         return response()->json(
             Task::with(['project', 'developers', 'slaTask'])
                 ->where('chef_de_projet_id', $chefDeProjetId)
@@ -97,6 +124,10 @@ class TaskController extends Controller
             return response()->json(['message' => 'Task not found'], 404);
         }
 
+        if (! $this->canAccessTask($request, $task)) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
         $validated = $request->validate([
             'status' => ['required', 'string', Rule::in(['pending', 'in_progress', 'done', 'completed', 'validated'])],
         ]);
@@ -106,12 +137,16 @@ class TaskController extends Controller
         return response()->json($task->load(['project', 'chefDeProjet', 'developers', 'slaTask']));
     }
 
-    public function getSla($taskId)
+    public function getSla(Request $request, $taskId)
     {
         $task = Task::find($taskId);
 
         if (! $task) {
             return response()->json(['message' => 'Task not found'], 404);
+        }
+
+        if (! $this->canAccessTask($request, $task)) {
+            return response()->json(['message' => 'Forbidden'], 403);
         }
 
         $sla = $task->slaTask;
@@ -129,6 +164,10 @@ class TaskController extends Controller
 
         if (! $task) {
             return response()->json(['message' => 'Task not found'], 404);
+        }
+
+        if (! $this->canManageTask($request, $task)) {
+            return response()->json(['message' => 'Forbidden'], 403);
         }
 
         $validated = $request->validate([
@@ -178,12 +217,33 @@ class TaskController extends Controller
             $payload['status'] = $this->normalizeStatus((string) $payload['status']);
         }
 
-        if (array_key_exists('description', $payload) && ! array_key_exists('goal', $payload)) {
+        $hasGoalColumn = Schema::hasColumn('tasks', 'goal');
+        $hasDescriptionColumn = Schema::hasColumn('tasks', 'description');
+
+        if (
+            $hasGoalColumn
+            && ! $hasDescriptionColumn
+            && array_key_exists('description', $payload)
+            && ! array_key_exists('goal', $payload)
+        ) {
             $payload['goal'] = $payload['description'];
         }
 
-        if (array_key_exists('goal', $payload) && ! array_key_exists('description', $payload)) {
+        if (
+            $hasDescriptionColumn
+            && ! $hasGoalColumn
+            && array_key_exists('goal', $payload)
+            && ! array_key_exists('description', $payload)
+        ) {
             $payload['description'] = $payload['goal'];
+        }
+
+        if (! $hasGoalColumn) {
+            unset($payload['goal']);
+        }
+
+        if (! $hasDescriptionColumn) {
+            unset($payload['description']);
         }
 
         return $payload;

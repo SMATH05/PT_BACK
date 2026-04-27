@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\InteractsWithActorScope;
 use App\Models\Project;
 use App\Models\ProjectFile;
 use Illuminate\Http\Request;
@@ -10,6 +11,8 @@ use Symfony\Component\HttpFoundation\Response;
 
 class ProjectFileController extends Controller
 {
+    use InteractsWithActorScope;
+
     public function uploadFile(Request $request, $projectId)
     {
         $validated = $request->validate([
@@ -20,6 +23,10 @@ class ProjectFileController extends Controller
 
         if (! $project) {
             return response()->json(['message' => 'Project not found'], 404);
+        }
+
+        if (! $this->canManageProject($request, $project)) {
+            return response()->json(['message' => 'Forbidden'], 403);
         }
 
         $file = $validated['file'];
@@ -46,8 +53,12 @@ class ProjectFileController extends Controller
         ], 201);
     }
 
-    public function show($projectId, $fileId): Response
+    public function show(Request $request, $projectId, $fileId): Response
     {
+        $project = Project::find($projectId);
+        abort_unless($project !== null, 404, 'Project not found');
+        abort_unless($this->canAccessProject($request, $project), 403, 'Forbidden');
+
         $projectFile = $this->findProjectFile($projectId, $fileId);
         $disk = $projectFile->disk ?? config('filesystems.default', 'local');
 
@@ -60,8 +71,12 @@ class ProjectFileController extends Controller
         );
     }
 
-    public function download($projectId, $fileId): Response
+    public function download(Request $request, $projectId, $fileId): Response
     {
+        $project = Project::find($projectId);
+        abort_unless($project !== null, 404, 'Project not found');
+        abort_unless($this->canAccessProject($request, $project), 403, 'Forbidden');
+
         $projectFile = $this->findProjectFile($projectId, $fileId);
         $disk = $projectFile->disk ?? config('filesystems.default', 'local');
 
@@ -70,8 +85,17 @@ class ProjectFileController extends Controller
         return Storage::disk($disk)->download($projectFile->filepath, $projectFile->filename);
     }
 
-    public function destroy($projectId, $fileId)
+    public function destroy(Request $request, $projectId, $fileId)
     {
+        $project = Project::find($projectId);
+        if (! $project) {
+            return response()->json(['message' => 'Project not found'], 404);
+        }
+
+        if (! $this->canManageProject($request, $project)) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
         $projectFile = $this->findProjectFile($projectId, $fileId);
         $disk = $projectFile->disk ?? config('filesystems.default', 'local');
 

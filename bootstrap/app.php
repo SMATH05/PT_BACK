@@ -14,6 +14,8 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'keycloak.auth' => \App\Http\Middleware\AuthenticateWithKeycloak::class,
+            'keycloak.role' => \App\Http\Middleware\RequireKeycloakRole::class,
+            'actor.route' => \App\Http\Middleware\EnsureActorMatchesRoute::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

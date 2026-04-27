@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\InteractsWithActorScope;
 use Illuminate\Http\Request;
 use App\Models\ChefDeProjet;
 use App\Models\Project;
@@ -9,12 +10,16 @@ use App\Models\Task;
 
 class ChefDeProjetController extends Controller
 {
+    use InteractsWithActorScope;
+
     /**
      * List all chefs de projet.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $chefs = ChefDeProjet::with('manager')->get();
+        $chefs = $this->scopedChefsQuery($request)
+            ->with('manager')
+            ->get();
 
         return response()->json($chefs);
     }
@@ -22,9 +27,13 @@ class ChefDeProjetController extends Controller
     /**
      * Get details of a specific chef de projet.
      */
-    public function show($id)
+    public function show(Request $request, $id)
     {
         $chef = ChefDeProjet::with('manager', 'projects', 'tasks')->findOrFail($id);
+
+        if ($this->userHasRole($request, 'chef_de_projet') && $this->currentChefDeProjetId($request) !== (int) $id) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
 
         return response()->json([
             'id' => $chef->id,
@@ -107,9 +116,13 @@ class ChefDeProjetController extends Controller
     /**
      * Get projects supervised by this chef de projet.
      */
-    public function getSupervisedProjects($id)
+    public function getSupervisedProjects(Request $request, $id)
     {
         $chef = ChefDeProjet::findOrFail($id);
+
+        if ($this->userHasRole($request, 'chef_de_projet') && $this->currentChefDeProjetId($request) !== (int) $id) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
 
         $projects = $chef->projects()->with('manager')->get();
 
@@ -131,9 +144,13 @@ class ChefDeProjetController extends Controller
     /**
      * Get tasks validated by this chef de projet.
      */
-    public function getValidatedTasks($id)
+    public function getValidatedTasks(Request $request, $id)
     {
         $chef = ChefDeProjet::findOrFail($id);
+
+        if ($this->userHasRole($request, 'chef_de_projet') && $this->currentChefDeProjetId($request) !== (int) $id) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
 
         $tasks = $chef->tasks()->with('project')->get();
 
@@ -190,6 +207,10 @@ class ChefDeProjetController extends Controller
         $chef = ChefDeProjet::findOrFail($id);
         $task = Task::findOrFail($request->task_id);
 
+        if ($this->currentChefDeProjetId($request) !== (int) $id) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
         // Check if task is in a validatable state
         if (!in_array($task->status, ['done', 'completed', 'in_progress'], true)) {
             return response()->json(['message' => 'Task must be done or in progress to be validated'], 400);
@@ -203,9 +224,13 @@ class ChefDeProjetController extends Controller
     /**
      * Get statistics for a chef de projet.
      */
-    public function getChefStats($id)
+    public function getChefStats(Request $request, $id)
     {
         $chef = ChefDeProjet::findOrFail($id);
+
+        if ($this->userHasRole($request, 'chef_de_projet') && $this->currentChefDeProjetId($request) !== (int) $id) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
 
         $totalProjects = $chef->projects()->count();
         $activeProjects = $chef->projects()->where('deadline', '>', now())->count();
@@ -235,11 +260,14 @@ class ChefDeProjetController extends Controller
     /**
      * Get chefs de projet currently supervising active projects.
      */
-    public function getActiveChefs()
+    public function getActiveChefs(Request $request)
     {
-        $activeChefs = ChefDeProjet::whereHas('projects', function ($query) {
-            $query->where('deadline', '>', now());
-        })->with('manager')->get();
+        $activeChefs = $this->scopedChefsQuery($request)
+            ->whereHas('projects', function ($query) {
+                $query->where('deadline', '>', now());
+            })
+            ->with('manager')
+            ->get();
 
         return response()->json($activeChefs);
     }
@@ -247,11 +275,12 @@ class ChefDeProjetController extends Controller
     /**
      * Search chefs de projet by name.
      */
-    public function searchByName($name)
+    public function searchByName(Request $request, $name)
     {
-        $chefs = ChefDeProjet::where('name', 'like', '%' . $name . '%')
-                             ->with('manager')
-                             ->get();
+        $chefs = $this->scopedChefsQuery($request)
+            ->where('name', 'like', '%' . $name . '%')
+            ->with('manager')
+            ->get();
 
         return response()->json($chefs);
     }

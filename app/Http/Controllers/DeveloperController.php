@@ -2,18 +2,23 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\InteractsWithActorScope;
 use Illuminate\Http\Request;
 use App\Models\Developer;
 use App\Models\Task;
 
 class DeveloperController extends Controller
 {
+    use InteractsWithActorScope;
+
     /**
      * List all developers.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $developers = Developer::with('manager')->get();
+        $developers = $this->scopedDevelopersQuery($request)
+            ->with('manager')
+            ->get();
 
         return response()->json($developers);
     }
@@ -21,9 +26,23 @@ class DeveloperController extends Controller
     /**
      * Retrieve details of a single developer.
      */
-    public function show($developerId)
+    public function show(Request $request, $developerId)
     {
         $developer = Developer::with('manager', 'projects', 'tasks')->findOrFail($developerId);
+
+        if ($this->userHasRole($request, 'developer') && $this->currentDeveloperId($request) !== (int) $developerId) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        if ($this->userHasRole($request, 'chef_de_projet')) {
+            $canSeeDeveloper = $developer->projects()
+                ->where('projects.chef_de_projet_id', $this->currentChefDeProjetId($request))
+                ->exists();
+
+            if (! $canSeeDeveloper) {
+                return response()->json(['message' => 'Forbidden'], 403);
+            }
+        }
 
         return response()->json([
             'id' => $developer->id,
@@ -105,11 +124,12 @@ class DeveloperController extends Controller
     /**
      * Search developers by name.
      */
-    public function searchByName($name)
+    public function searchByName(Request $request, $name)
     {
-        $developers = Developer::where('name', 'like', '%' . $name . '%')
-                               ->with('manager')
-                               ->get();
+        $developers = $this->scopedDevelopersQuery($request)
+            ->where('name', 'like', '%' . $name . '%')
+            ->with('manager')
+            ->get();
 
         return response()->json($developers);
     }
@@ -117,9 +137,27 @@ class DeveloperController extends Controller
     /**
      * Return statistics for a developer.
      */
-    public function getDeveloperStats($developerId)
+    public function getDeveloperStats(Request $request, $developerId)
     {
         $developer = Developer::findOrFail($developerId);
+
+        if ($this->userHasRole($request, 'developer') && $this->currentDeveloperId($request) !== (int) $developerId) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        if ($this->userHasRole($request, 'manager') && $developer->manager_id !== $this->currentManagerId($request)) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        if ($this->userHasRole($request, 'chef_de_projet')) {
+            $canSeeDeveloper = $developer->projects()
+                ->where('projects.chef_de_projet_id', $this->currentChefDeProjetId($request))
+                ->exists();
+
+            if (! $canSeeDeveloper) {
+                return response()->json(['message' => 'Forbidden'], 403);
+            }
+        }
 
         $totalProjects = $developer->projects()->count();
         $totalTasks = $developer->tasks()->count();
@@ -140,14 +178,17 @@ class DeveloperController extends Controller
     /**
      * List developers currently active in projects or tasks.
      */
-    public function getActiveDevelopers()
+    public function getActiveDevelopers(Request $request)
     {
-        $activeDevelopers = Developer::whereHas('projects')
-                                     ->orWhereHas('tasks', function ($query) {
-                                         $query->whereNotIn('status', ['done', 'completed', 'validated']);
-                                     })
-                                     ->with('manager')
-                                     ->get();
+        $activeDevelopers = $this->scopedDevelopersQuery($request)
+            ->where(function ($query) {
+                $query->whereHas('projects')
+                    ->orWhereHas('tasks', function ($taskQuery) {
+                        $taskQuery->whereNotIn('status', ['done', 'completed', 'validated']);
+                    });
+            })
+            ->with('manager')
+            ->get();
 
         return response()->json($activeDevelopers);
     }
@@ -155,9 +196,27 @@ class DeveloperController extends Controller
     /**
      * Show a timeline of developer activity.
      */
-    public function getDeveloperTimeline($developerId)
+    public function getDeveloperTimeline(Request $request, $developerId)
     {
         $developer = Developer::findOrFail($developerId);
+
+        if ($this->userHasRole($request, 'developer') && $this->currentDeveloperId($request) !== (int) $developerId) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        if ($this->userHasRole($request, 'manager') && $developer->manager_id !== $this->currentManagerId($request)) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        if ($this->userHasRole($request, 'chef_de_projet')) {
+            $canSeeDeveloper = $developer->projects()
+                ->where('projects.chef_de_projet_id', $this->currentChefDeProjetId($request))
+                ->exists();
+
+            if (! $canSeeDeveloper) {
+                return response()->json(['message' => 'Forbidden'], 403);
+            }
+        }
 
         $timeline = [];
 

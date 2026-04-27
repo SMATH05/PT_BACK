@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\InteractsWithActorScope;
 use App\Models\Manager;
 use App\Models\Project;
 use App\Models\Developer;
@@ -12,20 +13,30 @@ use Illuminate\Support\Facades\DB;
 
 class ManagerController extends Controller
 {
+    use InteractsWithActorScope;
+
     /**
      * Get all managers
      */
-    public function index()
+    public function index(Request $request)
     {
-        $managers = Manager::with('projects', 'developers', 'chefDeProjets')->get();
+        $managerId = $this->currentManagerId($request);
+        $managers = $managerId
+            ? Manager::with('projects', 'developers', 'chefDeProjets')->whereKey($managerId)->get()
+            : collect();
+
         return response()->json($managers);
     }
 
     /**
      * Get a specific manager
      */
-    public function show($id)
+    public function show(Request $request, $id)
     {
+        if ($this->currentManagerId($request) !== (int) $id) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
         $manager = Manager::with('projects', 'developers', 'chefDeProjets')->find($id);
 
         if (!$manager) {
@@ -58,6 +69,10 @@ class ManagerController extends Controller
      */
     public function update(Request $request, $id)
     {
+        if ($this->currentManagerId($request) !== (int) $id) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
         $manager = Manager::find($id);
 
         if (!$manager) {
@@ -80,8 +95,12 @@ class ManagerController extends Controller
     /**
      * Delete a manager
      */
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
+        if ($this->currentManagerId($request) !== (int) $id) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
         $manager = Manager::find($id);
 
         if (!$manager) {

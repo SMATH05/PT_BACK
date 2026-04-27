@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\InteractsWithActorScope;
 use App\Models\Developer;
 use App\Models\Task;
 use App\Models\DeveloperTask;
@@ -9,6 +10,8 @@ use Illuminate\Http\Request;
 
 class DeveloperTaskController extends Controller
 {
+    use InteractsWithActorScope;
+
     /**
      * Get all developer-task assignments
      */
@@ -141,11 +144,29 @@ class DeveloperTaskController extends Controller
     /**
      * Get all tasks assigned to a developer
      */
-    public function tasksByDeveloper($developerId)
+    public function tasksByDeveloper(Request $request, $developerId)
     {
         $developer = Developer::find($developerId);
         if (!$developer) {
             return response()->json(['message' => 'Developer not found'], 404);
+        }
+
+        if ($this->userHasRole($request, 'developer') && $this->currentDeveloperId($request) !== (int) $developerId) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        if ($this->userHasRole($request, 'manager') && $developer->manager_id !== $this->currentManagerId($request)) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        if ($this->userHasRole($request, 'chef_de_projet')) {
+            $canSeeDeveloper = $developer->projects()
+                ->where('projects.chef_de_projet_id', $this->currentChefDeProjetId($request))
+                ->exists();
+
+            if (! $canSeeDeveloper) {
+                return response()->json(['message' => 'Forbidden'], 403);
+            }
         }
 
         $tasks = $developer->tasks()->with('chefDeProjet', 'project')->get();
@@ -156,11 +177,15 @@ class DeveloperTaskController extends Controller
     /**
      * Get all developers assigned to a task
      */
-    public function developersByTask($taskId)
+    public function developersByTask(Request $request, $taskId)
     {
         $task = Task::find($taskId);
         if (!$task) {
             return response()->json(['message' => 'Task not found'], 404);
+        }
+
+        if (! $this->canAccessTask($request, $task)) {
+            return response()->json(['message' => 'Forbidden'], 403);
         }
 
         $developers = $task->developers()->get();
@@ -171,11 +196,29 @@ class DeveloperTaskController extends Controller
     /**
      * Get tasks by developer and role
      */
-    public function tasksByDeveloperAndRole($developerId, $role)
+    public function tasksByDeveloperAndRole(Request $request, $developerId, $role)
     {
         $developer = Developer::find($developerId);
         if (!$developer) {
             return response()->json(['message' => 'Developer not found'], 404);
+        }
+
+        if ($this->userHasRole($request, 'developer') && $this->currentDeveloperId($request) !== (int) $developerId) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        if ($this->userHasRole($request, 'manager') && $developer->manager_id !== $this->currentManagerId($request)) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        if ($this->userHasRole($request, 'chef_de_projet')) {
+            $canSeeDeveloper = $developer->projects()
+                ->where('projects.chef_de_projet_id', $this->currentChefDeProjetId($request))
+                ->exists();
+
+            if (! $canSeeDeveloper) {
+                return response()->json(['message' => 'Forbidden'], 403);
+            }
         }
 
         $tasks = $developer->tasks()
@@ -200,11 +243,29 @@ class DeveloperTaskController extends Controller
     /**
      * Get tasks by developer and task status
      */
-    public function tasksByDeveloperAndStatus($developerId, $status)
+    public function tasksByDeveloperAndStatus(Request $request, $developerId, $status)
     {
         $developer = Developer::find($developerId);
         if (!$developer) {
             return response()->json(['message' => 'Developer not found'], 404);
+        }
+
+        if ($this->userHasRole($request, 'developer') && $this->currentDeveloperId($request) !== (int) $developerId) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        if ($this->userHasRole($request, 'manager') && $developer->manager_id !== $this->currentManagerId($request)) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        if ($this->userHasRole($request, 'chef_de_projet')) {
+            $canSeeDeveloper = $developer->projects()
+                ->where('projects.chef_de_projet_id', $this->currentChefDeProjetId($request))
+                ->exists();
+
+            if (! $canSeeDeveloper) {
+                return response()->json(['message' => 'Forbidden'], 403);
+            }
         }
 
         $tasks = $developer->tasks()
@@ -234,11 +295,15 @@ class DeveloperTaskController extends Controller
     /**
      * Get count of developers assigned to a task
      */
-    public function countDevelopersByTask($taskId)
+    public function countDevelopersByTask(Request $request, $taskId)
     {
         $task = Task::find($taskId);
         if (!$task) {
             return response()->json(['message' => 'Task not found'], 404);
+        }
+
+        if (! $this->canAccessTask($request, $task)) {
+            return response()->json(['message' => 'Forbidden'], 403);
         }
 
         $count = $task->developers()->count();
@@ -249,11 +314,29 @@ class DeveloperTaskController extends Controller
     /**
      * Get count of tasks assigned to a developer
      */
-    public function countTasksByDeveloper($developerId)
+    public function countTasksByDeveloper(Request $request, $developerId)
     {
         $developer = Developer::find($developerId);
         if (!$developer) {
             return response()->json(['message' => 'Developer not found'], 404);
+        }
+
+        if ($this->userHasRole($request, 'developer') && $this->currentDeveloperId($request) !== (int) $developerId) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        if ($this->userHasRole($request, 'manager') && $developer->manager_id !== $this->currentManagerId($request)) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        if ($this->userHasRole($request, 'chef_de_projet')) {
+            $canSeeDeveloper = $developer->projects()
+                ->where('projects.chef_de_projet_id', $this->currentChefDeProjetId($request))
+                ->exists();
+
+            if (! $canSeeDeveloper) {
+                return response()->json(['message' => 'Forbidden'], 403);
+            }
         }
 
         $count = $developer->tasks()->count();

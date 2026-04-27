@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\InteractsWithActorScope;
 use Illuminate\Http\Request;
 use App\Models\Project;
 use App\Models\Developer;
@@ -9,6 +10,8 @@ use App\Models\DeveloperProject;
 
 class DeveloperProjectController extends Controller
 {
+    use InteractsWithActorScope;
+
     /**
      * Assign a developer to a project with a specific role and record the join date.
      */
@@ -104,9 +107,27 @@ class DeveloperProjectController extends Controller
     /**
      * Retrieve all projects a given developer is working on.
      */
-    public function getDeveloperProjects($developerId)
+    public function getDeveloperProjects(Request $request, $developerId)
     {
         $developer = Developer::findOrFail($developerId);
+
+        if ($this->userHasRole($request, 'developer') && $this->currentDeveloperId($request) !== (int) $developerId) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        if ($this->userHasRole($request, 'manager') && $developer->manager_id !== $this->currentManagerId($request)) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        if ($this->userHasRole($request, 'chef_de_projet')) {
+            $canSeeDeveloper = $developer->projects()
+                ->where('projects.chef_de_projet_id', $this->currentChefDeProjetId($request))
+                ->exists();
+
+            if (! $canSeeDeveloper) {
+                return response()->json(['message' => 'Forbidden'], 403);
+            }
+        }
 
         $projects = $developer->projects()->with('manager', 'chefDeProjet')->get()->map(function ($project) {
             return [

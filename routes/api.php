@@ -23,6 +23,7 @@ Route::middleware('keycloak.auth')->group(function (): void {
     Route::get('auth/me', function (Request $request) {
         $claims = $request->attributes->get('keycloak_claims', []);
         $roles = $request->attributes->get('keycloak_roles', []);
+        $actorIds = $request->attributes->get('keycloak_actor_ids', []);
 
         return response()->json([
             'user' => [
@@ -33,96 +34,130 @@ Route::middleware('keycloak.auth')->group(function (): void {
                 'given_name' => $claims['given_name'] ?? null,
                 'family_name' => $claims['family_name'] ?? null,
                 'roles' => $roles,
+                'actor_ids' => $actorIds,
             ],
             'claims' => $claims,
         ]);
     });
 
-    Route::apiResource('tasks', TaskController::class);
-    Route::get('tasks-by-chef-de-projet/{chefDeProjetId}', [TaskController::class, 'tasksByChefDeProjet']);
-    Route::get('tasks-by-status/{status}', [TaskController::class, 'tasksByStatus']);
-    Route::get('tasks-by-chef-de-projet-and-status/{chefDeProjetId}/{status}', [TaskController::class, 'tasksByChefDeProjetAndStatus']);
-    Route::patch('tasks/{id}/status', [TaskController::class, 'updateStatus']);
-    Route::get('tasks/{taskId}/sla', [TaskController::class, 'getSla']);
-    Route::match(['put', 'patch'], 'tasks/{taskId}/sla', [TaskController::class, 'updateSla']);
+    Route::middleware('keycloak.role:manager,chef_de_projet,developer')->group(function (): void {
+        Route::get('tasks', [TaskController::class, 'index']);
+        Route::get('tasks/{id}', [TaskController::class, 'show']);
+        Route::get('tasks-by-status/{status}', [TaskController::class, 'tasksByStatus']);
+        Route::get('tasks/{taskId}/sla', [TaskController::class, 'getSla']);
+        Route::get('tasks/{taskId}/developers', [DeveloperTaskController::class, 'developersByTask']);
+        Route::get('tasks/{taskId}/developers/count', [DeveloperTaskController::class, 'countDevelopersByTask']);
 
-    Route::apiResource('developers', DeveloperController::class);
-    Route::get('developers/active/list', [DeveloperController::class, 'getActiveDevelopers']);
-    Route::get('developers/search/{name}', [DeveloperController::class, 'searchByName']);
-    Route::get('developers/{developerId}/stats', [DeveloperController::class, 'getDeveloperStats']);
-    Route::get('developers/{developerId}/timeline', [DeveloperController::class, 'getDeveloperTimeline']);
-    Route::get('developers/{developerId}/projects', [DeveloperProjectController::class, 'getDeveloperProjects']);
-    Route::get('developers/{developerId}/tasks', [DeveloperTaskController::class, 'tasksByDeveloper']);
-    Route::get('developers/{developerId}/tasks/status/{status}', [DeveloperTaskController::class, 'tasksByDeveloperAndStatus']);
-    Route::get('developers/{developerId}/tasks/role/{role}', [DeveloperTaskController::class, 'tasksByDeveloperAndRole']);
-    Route::get('developers/{developerId}/tasks/count', [DeveloperTaskController::class, 'countTasksByDeveloper']);
+        Route::get('projects', [ProjectController::class, 'index']);
+        Route::get('projects/{id}', [ProjectController::class, 'show']);
+        Route::get('projects/{projectId}/tasks', [ProjectController::class, 'getTasks']);
+        Route::get('projects/{projectId}/developers', [ProjectController::class, 'getDevelopers']);
+        Route::get('projects/{projectId}/statistics', [ProjectController::class, 'statistics']);
+        Route::get('projects/{projectId}/progress', [ProjectController::class, 'progress']);
+        Route::get('projects/{projectId}/timeline', [ProjectController::class, 'timeline']);
+        Route::get('projects/{projectId}/sla', [ProjectController::class, 'getSla']);
+        Route::get('projects/{projectId}/files', [ProjectController::class, 'getFiles']);
+        Route::get('projects/{projectId}/files/{fileId}', [ProjectFileController::class, 'show']);
+        Route::get('projects/{projectId}/files/{fileId}/download', [ProjectFileController::class, 'download']);
 
-    Route::apiResource('chefs-de-projet', ChefDeProjetController::class);
-    Route::get('chefs-de-projet/active/list', [ChefDeProjetController::class, 'getActiveChefs']);
-    Route::get('chefs-de-projet/search/{name}', [ChefDeProjetController::class, 'searchByName']);
-    Route::get('chefs-de-projet/{id}/projects', [ChefDeProjetController::class, 'getSupervisedProjects']);
-    Route::get('chefs-de-projet/{id}/tasks', [ChefDeProjetController::class, 'getValidatedTasks']);
-    Route::get('chefs-de-projet/{id}/stats', [ChefDeProjetController::class, 'getChefStats']);
-    Route::post('chefs-de-projet/{id}/assign-project', [ChefDeProjetController::class, 'assignToProject']);
-    Route::post('chefs-de-projet/{id}/validate-task', [ChefDeProjetController::class, 'validateTask']);
+        Route::get('developers', [DeveloperController::class, 'index']);
+        Route::get('developers/active/list', [DeveloperController::class, 'getActiveDevelopers']);
+        Route::get('developers/search/{name}', [DeveloperController::class, 'searchByName']);
+        Route::get('developers/{developerId}', [DeveloperController::class, 'show']);
+        Route::get('developers/{developerId}/stats', [DeveloperController::class, 'getDeveloperStats']);
+        Route::get('developers/{developerId}/timeline', [DeveloperController::class, 'getDeveloperTimeline']);
+        Route::get('developers/{developerId}/projects', [DeveloperProjectController::class, 'getDeveloperProjects']);
+        Route::get('developers/{developerId}/tasks', [DeveloperTaskController::class, 'tasksByDeveloper']);
+        Route::get('developers/{developerId}/tasks/status/{status}', [DeveloperTaskController::class, 'tasksByDeveloperAndStatus']);
+        Route::get('developers/{developerId}/tasks/role/{role}', [DeveloperTaskController::class, 'tasksByDeveloperAndRole']);
+        Route::get('developers/{developerId}/tasks/count', [DeveloperTaskController::class, 'countTasksByDeveloper']);
+    });
 
-    Route::apiResource('managers', ManagerController::class);
-    Route::get('managers/search', [ManagerController::class, 'search']);
-    Route::get('managers/{managerId}/projects', [ManagerController::class, 'getProjects']);
-    Route::post('managers/{managerId}/projects', [ManagerController::class, 'createProject']);
-    Route::get('managers/{managerId}/projects/{projectId}', [ManagerController::class, 'projectDetails']);
-    Route::get('managers/{managerId}/projects/{projectId}/assignment-data', [ManagerController::class, 'projectAssignmentData']);
-    Route::post('managers/{managerId}/projects/{projectId}/assignments', [ManagerController::class, 'saveProjectAssignments']);
-    Route::match(['put', 'patch'], 'managers/{managerId}/projects/{projectId}', [ManagerController::class, 'updateProject']);
-    Route::delete('managers/{managerId}/projects/{projectId}', [ManagerController::class, 'deleteProject']);
-    Route::get('managers/{managerId}/developers', [ManagerController::class, 'getDevelopers']);
-    Route::post('managers/{managerId}/developers', [ManagerController::class, 'assignDeveloper']);
-    Route::delete('managers/{managerId}/developers/{developerId}', [ManagerController::class, 'removeDeveloper']);
-    Route::post('managers/{managerId}/developers/bulk', [ManagerController::class, 'bulkAssignDevelopers']);
-    Route::get('managers/{managerId}/chefs-de-projet', [ManagerController::class, 'getChefsDeProjets']);
-    Route::post('managers/{managerId}/chefs-de-projet', [ManagerController::class, 'assignChefDeProjet']);
-    Route::delete('managers/{managerId}/chefs-de-projet/{chefDeProjetId}', [ManagerController::class, 'removeChefDeProjet']);
-    Route::get('managers/{managerId}/counts/projects', [ManagerController::class, 'projectCount']);
-    Route::get('managers/{managerId}/counts/developers', [ManagerController::class, 'developerCount']);
-    Route::get('managers/{managerId}/counts/chefs-de-projet', [ManagerController::class, 'chefDeProjetCount']);
-    Route::get('managers/{managerId}/statistics', [ManagerController::class, 'statistics']);
-    Route::get('managers/{managerId}/export', [ManagerController::class, 'exportData']);
+    Route::middleware('keycloak.role:manager,chef_de_projet')->group(function (): void {
+        Route::get('tasks-by-chef-de-projet/{chefDeProjetId}', [TaskController::class, 'tasksByChefDeProjet']);
+        Route::get('tasks-by-chef-de-projet-and-status/{chefDeProjetId}/{status}', [TaskController::class, 'tasksByChefDeProjetAndStatus']);
 
-    Route::get('projects', [ProjectController::class, 'index']);
-    Route::get('projects/{id}', [ProjectController::class, 'show']);
-    Route::match(['put', 'patch'], 'projects/{id}', [ProjectController::class, 'update']);
-    Route::delete('projects/{id}', [ProjectController::class, 'destroy']);
-    Route::get('projects/{projectId}/tasks', [ProjectController::class, 'getTasks']);
-    Route::get('projects/{projectId}/developers', [ProjectController::class, 'getDevelopers']);
-    Route::get('projects/{projectId}/statistics', [ProjectController::class, 'statistics']);
-    Route::get('projects/{projectId}/progress', [ProjectController::class, 'progress']);
-    Route::get('projects/{projectId}/timeline', [ProjectController::class, 'timeline']);
-    Route::get('projects/{projectId}/sla', [ProjectController::class, 'getSla']);
-    Route::match(['put', 'patch'], 'projects/{projectId}/sla', [ProjectController::class, 'updateSla']);
-    Route::get('projects/{projectId}/files', [ProjectController::class, 'getFiles']);
-    Route::post('projects/{projectId}/files', [ProjectFileController::class, 'uploadFile']);
-    Route::get('projects/{projectId}/files/{fileId}', [ProjectFileController::class, 'show']);
-    Route::get('projects/{projectId}/files/{fileId}/download', [ProjectFileController::class, 'download']);
-    Route::delete('projects/{projectId}/files/{fileId}', [ProjectFileController::class, 'destroy']);
-    Route::get('projects/{projectId}/export', [ProjectController::class, 'exportData']);
+        Route::get('chefs-de-projet', [ChefDeProjetController::class, 'index']);
+        Route::get('chefs-de-projet/active/list', [ChefDeProjetController::class, 'getActiveChefs']);
+        Route::get('chefs-de-projet/search/{name}', [ChefDeProjetController::class, 'searchByName']);
+        Route::get('chefs-de-projet/{id}', [ChefDeProjetController::class, 'show']);
+        Route::get('chefs-de-projet/{id}/projects', [ChefDeProjetController::class, 'getSupervisedProjects']);
+        Route::get('chefs-de-projet/{id}/tasks', [ChefDeProjetController::class, 'getValidatedTasks']);
+        Route::get('chefs-de-projet/{id}/stats', [ChefDeProjetController::class, 'getChefStats']);
+    });
 
-    Route::get('developer-task-assignments', [DeveloperTaskController::class, 'index']);
-    Route::post('developer-task-assignments', [DeveloperTaskController::class, 'assignDeveloperToTask']);
-    Route::get('developer-task-assignments/role/{role}', [DeveloperTaskController::class, 'assignmentsByRole']);
-    Route::get('developer-task-assignments/{developerId}/{taskId}', [DeveloperTaskController::class, 'show']);
-    Route::match(['put', 'patch'], 'developer-task-assignments/{developerId}/{taskId}', [DeveloperTaskController::class, 'updateAssignment']);
-    Route::delete('developer-task-assignments/{developerId}/{taskId}', [DeveloperTaskController::class, 'unassignDeveloperFromTask']);
-    Route::get('developer-task-assignments/{developerId}/{taskId}/details', [DeveloperTaskController::class, 'assignmentDetails']);
+    Route::middleware('keycloak.role:manager')->group(function (): void {
+        Route::post('tasks', [TaskController::class, 'store']);
+        Route::match(['put', 'patch'], 'tasks/{id}', [TaskController::class, 'update']);
+        Route::delete('tasks/{id}', [TaskController::class, 'destroy']);
+        Route::patch('tasks/{id}/status', [TaskController::class, 'updateStatus']);
+        Route::match(['put', 'patch'], 'tasks/{taskId}/sla', [TaskController::class, 'updateSla']);
 
-    Route::get('tasks/{taskId}/developers', [DeveloperTaskController::class, 'developersByTask']);
-    Route::get('tasks/{taskId}/developers/count', [DeveloperTaskController::class, 'countDevelopersByTask']);
-    Route::post('tasks/{taskId}/developers/bulk', [DeveloperTaskController::class, 'bulkAssignDevelopersToTask']);
-    Route::delete('tasks/{taskId}/developers', [DeveloperTaskController::class, 'removeAllDevelopersFromTask']);
+        Route::post('developers', [DeveloperController::class, 'store']);
+        Route::match(['put', 'patch'], 'developers/{developerId}', [DeveloperController::class, 'update']);
+        Route::delete('developers/{developerId}', [DeveloperController::class, 'destroy']);
 
-    Route::get('projects/{projectId}/developer-assignments', [DeveloperProjectController::class, 'listProjectDevelopers']);
-    Route::post('projects/{projectId}/developers/{developerId}', [DeveloperProjectController::class, 'assignDeveloperToProject']);
-    Route::match(['put', 'patch'], 'projects/{projectId}/developers/{developerId}', [DeveloperProjectController::class, 'updateDeveloperRole']);
-    Route::delete('projects/{projectId}/developers/{developerId}', [DeveloperProjectController::class, 'removeDeveloperFromProject']);
-    Route::get('projects/{projectId}/developers/{developerId}/history', [DeveloperProjectController::class, 'projectDeveloperHistory']);
-    Route::post('projects/{projectId}/developers/bulk', [DeveloperProjectController::class, 'bulkAssignDevelopers']);
+        Route::post('chefs-de-projet', [ChefDeProjetController::class, 'store']);
+        Route::match(['put', 'patch'], 'chefs-de-projet/{id}', [ChefDeProjetController::class, 'update']);
+        Route::delete('chefs-de-projet/{id}', [ChefDeProjetController::class, 'destroy']);
+        Route::post('chefs-de-projet/{id}/assign-project', [ChefDeProjetController::class, 'assignToProject']);
+
+        Route::get('managers', [ManagerController::class, 'index']);
+        Route::get('managers/search', [ManagerController::class, 'search']);
+        Route::post('managers', [ManagerController::class, 'store']);
+        Route::get('managers/{id}', [ManagerController::class, 'show']);
+        Route::match(['put', 'patch'], 'managers/{id}', [ManagerController::class, 'update']);
+        Route::delete('managers/{id}', [ManagerController::class, 'destroy']);
+
+        Route::match(['put', 'patch'], 'projects/{id}', [ProjectController::class, 'update']);
+        Route::delete('projects/{id}', [ProjectController::class, 'destroy']);
+        Route::match(['put', 'patch'], 'projects/{projectId}/sla', [ProjectController::class, 'updateSla']);
+        Route::post('projects/{projectId}/files', [ProjectFileController::class, 'uploadFile']);
+        Route::delete('projects/{projectId}/files/{fileId}', [ProjectFileController::class, 'destroy']);
+        Route::get('projects/{projectId}/export', [ProjectController::class, 'exportData']);
+
+        Route::get('developer-task-assignments', [DeveloperTaskController::class, 'index']);
+        Route::post('developer-task-assignments', [DeveloperTaskController::class, 'assignDeveloperToTask']);
+        Route::get('developer-task-assignments/role/{role}', [DeveloperTaskController::class, 'assignmentsByRole']);
+        Route::get('developer-task-assignments/{developerId}/{taskId}', [DeveloperTaskController::class, 'show']);
+        Route::match(['put', 'patch'], 'developer-task-assignments/{developerId}/{taskId}', [DeveloperTaskController::class, 'updateAssignment']);
+        Route::delete('developer-task-assignments/{developerId}/{taskId}', [DeveloperTaskController::class, 'unassignDeveloperFromTask']);
+        Route::get('developer-task-assignments/{developerId}/{taskId}/details', [DeveloperTaskController::class, 'assignmentDetails']);
+
+        Route::post('tasks/{taskId}/developers/bulk', [DeveloperTaskController::class, 'bulkAssignDevelopersToTask']);
+        Route::delete('tasks/{taskId}/developers', [DeveloperTaskController::class, 'removeAllDevelopersFromTask']);
+
+        Route::get('projects/{projectId}/developer-assignments', [DeveloperProjectController::class, 'listProjectDevelopers']);
+        Route::post('projects/{projectId}/developers/{developerId}', [DeveloperProjectController::class, 'assignDeveloperToProject']);
+        Route::match(['put', 'patch'], 'projects/{projectId}/developers/{developerId}', [DeveloperProjectController::class, 'updateDeveloperRole']);
+        Route::delete('projects/{projectId}/developers/{developerId}', [DeveloperProjectController::class, 'removeDeveloperFromProject']);
+        Route::get('projects/{projectId}/developers/{developerId}/history', [DeveloperProjectController::class, 'projectDeveloperHistory']);
+        Route::post('projects/{projectId}/developers/bulk', [DeveloperProjectController::class, 'bulkAssignDevelopers']);
+    });
+
+    Route::middleware(['keycloak.role:chef_de_projet', 'actor.route:chef_de_projet,id'])->group(function (): void {
+        Route::post('chefs-de-projet/{id}/validate-task', [ChefDeProjetController::class, 'validateTask']);
+    });
+
+    Route::middleware(['keycloak.role:manager', 'actor.route:manager,managerId'])->group(function (): void {
+        Route::get('managers/{managerId}/projects', [ManagerController::class, 'getProjects']);
+        Route::post('managers/{managerId}/projects', [ManagerController::class, 'createProject']);
+        Route::get('managers/{managerId}/projects/{projectId}', [ManagerController::class, 'projectDetails']);
+        Route::get('managers/{managerId}/projects/{projectId}/assignment-data', [ManagerController::class, 'projectAssignmentData']);
+        Route::post('managers/{managerId}/projects/{projectId}/assignments', [ManagerController::class, 'saveProjectAssignments']);
+        Route::match(['put', 'patch'], 'managers/{managerId}/projects/{projectId}', [ManagerController::class, 'updateProject']);
+        Route::delete('managers/{managerId}/projects/{projectId}', [ManagerController::class, 'deleteProject']);
+        Route::get('managers/{managerId}/developers', [ManagerController::class, 'getDevelopers']);
+        Route::post('managers/{managerId}/developers', [ManagerController::class, 'assignDeveloper']);
+        Route::delete('managers/{managerId}/developers/{developerId}', [ManagerController::class, 'removeDeveloper']);
+        Route::post('managers/{managerId}/developers/bulk', [ManagerController::class, 'bulkAssignDevelopers']);
+        Route::get('managers/{managerId}/chefs-de-projet', [ManagerController::class, 'getChefsDeProjets']);
+        Route::post('managers/{managerId}/chefs-de-projet', [ManagerController::class, 'assignChefDeProjet']);
+        Route::delete('managers/{managerId}/chefs-de-projet/{chefDeProjetId}', [ManagerController::class, 'removeChefDeProjet']);
+        Route::get('managers/{managerId}/counts/projects', [ManagerController::class, 'projectCount']);
+        Route::get('managers/{managerId}/counts/developers', [ManagerController::class, 'developerCount']);
+        Route::get('managers/{managerId}/counts/chefs-de-projet', [ManagerController::class, 'chefDeProjetCount']);
+        Route::get('managers/{managerId}/statistics', [ManagerController::class, 'statistics']);
+        Route::get('managers/{managerId}/export', [ManagerController::class, 'exportData']);
+    });
 });

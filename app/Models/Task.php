@@ -7,10 +7,18 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Facades\Schema;
 
 class Task extends Model
 {
     use HasFactory;
+
+    /**
+     * Cache task table column checks for the current request lifecycle.
+     *
+     * @var array<string, bool>
+     */
+    protected static array $columnExistsCache = [];
 
     /**
      * The attributes that are mass assignable.
@@ -65,9 +73,11 @@ class Task extends Model
      */
     public function setDescriptionAttribute(?string $value): void
     {
-        $this->attributes['description'] = $value;
+        if ($this->taskColumnExists('description')) {
+            $this->attributes['description'] = $value;
+        }
 
-        if (array_key_exists('goal', $this->attributes) || $value !== null) {
+        if ($this->taskColumnExists('goal')) {
             $this->attributes['goal'] = $value;
         }
     }
@@ -77,8 +87,13 @@ class Task extends Model
      */
     public function setGoalAttribute(?string $value): void
     {
-        $this->attributes['goal'] = $value;
-        $this->attributes['description'] = $value;
+        if ($this->taskColumnExists('goal')) {
+            $this->attributes['goal'] = $value;
+        }
+
+        if ($this->taskColumnExists('description')) {
+            $this->attributes['description'] = $value;
+        }
     }
 
     /**
@@ -89,5 +104,16 @@ class Task extends Model
         $normalizedStatus = $status === 'completed' ? 'done' : $status;
 
         return $this->update(['status' => $normalizedStatus]);
+    }
+
+    private function taskColumnExists(string $column): bool
+    {
+        $cacheKey = "{$this->getTable()}.{$column}";
+
+        if (! array_key_exists($cacheKey, self::$columnExistsCache)) {
+            self::$columnExistsCache[$cacheKey] = Schema::hasColumn($this->getTable(), $column);
+        }
+
+        return self::$columnExistsCache[$cacheKey];
     }
 }
