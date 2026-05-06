@@ -37,6 +37,7 @@ class AuthenticateWithKeycloak
 
         $roles = $this->extractRoles($claims);
         $actorIds = $this->resolveActorIds($claims);
+        $roles = $this->augmentRolesFromActorIds($roles, $actorIds);
         $user = new GenericUser([
             'id' => $claims['sub'] ?? null,
             'sub' => $claims['sub'] ?? null,
@@ -145,6 +146,28 @@ class AuthenticateWithKeycloak
     }
 
     /**
+     * @param  array<int, string>  $roles
+     * @param  array<string, int|null>  $actorIds
+     * @return array<int, string>
+     */
+    private function augmentRolesFromActorIds(array $roles, array $actorIds): array
+    {
+        if (($actorIds['manager'] ?? null) !== null) {
+            $roles[] = 'manager';
+        }
+
+        if (($actorIds['developer'] ?? null) !== null) {
+            $roles[] = 'developer';
+        }
+
+        if (($actorIds['chef_de_projet'] ?? null) !== null) {
+            $roles[] = 'chef_de_projet';
+        }
+
+        return array_values(array_unique($roles));
+    }
+
+    /**
      * @param  array<string, mixed>  $claims
      */
     private function resolveDisplayName(array $claims): string
@@ -162,7 +185,14 @@ class AuthenticateWithKeycloak
 
     private function normalizeRole(string $role): string
     {
-        return (string) preg_replace('/[\s-]+/', '_', mb_strtolower(trim($role)));
+        $normalizedRole = (string) preg_replace('/[\s-]+/', '_', mb_strtolower(trim($role)));
+
+        return match ($normalizedRole) {
+            'chef', 'chef_de_projets', 'chef_projet', 'chefprojet' => 'chef_de_projet',
+            'dev', 'developper', 'developpeur', 'developer_role', 'devloper' => 'developer',
+            'project_manager' => 'manager',
+            default => $normalizedRole,
+        };
     }
 
     private function unauthorized(string $message): JsonResponse

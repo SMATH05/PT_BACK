@@ -267,6 +267,13 @@ trait InteractsWithActorScope
 
     private function normalizeRole(string $role): string
     {
-        return (string) preg_replace('/[\s-]+/', '_', mb_strtolower(trim($role)));
+        $normalizedRole = (string) preg_replace('/[\s-]+/', '_', mb_strtolower(trim($role)));
+
+        return match ($normalizedRole) {
+            'chef', 'chef_de_projets', 'chef_projet', 'chefprojet' => 'chef_de_projet',
+            'dev', 'developper', 'developpeur', 'developer_role', 'devloper' => 'developer',
+            'project_manager' => 'manager',
+            default => $normalizedRole,
+        };
     }
 }
