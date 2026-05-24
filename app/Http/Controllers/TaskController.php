@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\InteractsWithActorScope;
 use App\Models\Task;
+use App\Notifications\TaskCompleted;
+use App\Notifications\ProjectCompleted;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
@@ -39,7 +41,13 @@ class TaskController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate($this->taskRules());
-        $task = Task::create($this->normalizeTaskPayload($validated));
+        $payload = $this->normalizeTaskPayload($validated);
+
+        if (isset($payload['status'])) {
+            $payload['status'] = $this->ensureValidStatusForRole($request, $payload['status']);
+        }
+
+        $task = Task::create($payload);
 
         return response()->json($task->load(['project', 'chefDeProjet', 'developers', 'slaTask']), 201);
     }
@@ -57,7 +65,13 @@ class TaskController extends Controller
         }
 
         $validated = $request->validate($this->taskRules(true));
-        $task->update($this->normalizeTaskPayload($validated));
+        $payload = $this->normalizeTaskPayload($validated);
+
+        if (isset($payload['status'])) {
+            $payload['status'] = $this->ensureValidStatusForRole($request, $payload['status']);
+        }
+
+        $task->update($payload);
 
         return response()->json($task->load(['project', 'chefDeProjet', 'developers', 'slaTask']));
     }
@@ -129,10 +143,45 @@ class TaskController extends Controller
         }
 
         $validated = $request->validate([
-            'status' => ['required', 'string', Rule::in(['pending', 'in_progress', 'done', 'completed', 'validated'])],
+            'status' => ['required', 'string', Rule::in(['pending', 'in_progress', 'done', 'completed', 'validated', 'waiting_validation'])],
         ]);
 
-        $task->update(['status' => $this->normalizeStatus($validated['status'])]);
+        $oldStatus = $task->status;
+        $newStatus = $this->ensureValidStatusForRole($request, $this->normalizeStatus($validated['status']));
+
+        $task->update(['status' => $newStatus]);
+
+        // Trigger notifications
+        if ($newStatus === 'waiting_validation' && $oldStatus !== 'waiting_validation') {
+            $chef = $task->chefDeProjet ?? $task->project->chefDeProjet;
+            if ($chef) {
+                // We'll use the TaskCompleted notification but with a "requesting validation" context if possible, 
+                // or just reuse it as a "Status Change" notification.
+                $chef->notify(new TaskCompleted($task)); 
+            }
+        }
+
+        if ($newStatus === 'done' && $oldStatus !== 'done') {
+            // Already handled by existing logic or will be handled by Chef validation
+            $chef = $task->chefDeProjet ?? $task->project->chefDeProjet;
+            if ($chef) {
+                $chef->notify(new TaskCompleted($task));
+            }
+
+            // Check if all project tasks are completed
+            $project = $task->project;
+            if ($project) {
+                $totalTasks = $project->tasks()->count();
+                $completedTasks = $project->tasks()->whereIn('status', ['done', 'validated'])->count();
+
+                if ($totalTasks > 0 && $completedTasks === $totalTasks) {
+                    $manager = $project->manager;
+                    if ($manager) {
+                        $manager->notify(new ProjectCompleted($project));
+                    }
+                }
+            }
+        }
 
         return response()->json($task->load(['project', 'chefDeProjet', 'developers', 'slaTask']));
     }
@@ -201,7 +250,7 @@ class TaskController extends Controller
             'title' => "{$required}|string|max:255",
             'goal' => 'sometimes|nullable|string',
             'description' => 'sometimes|nullable|string',
-            'status' => [$required, 'string', Rule::in(['pending', 'in_progress', 'done', 'completed', 'validated'])],
+            'status' => [$required, 'string', Rule::in(['pending', 'in_progress', 'done', 'completed', 'validated', 'waiting_validation'])],
             'project_id' => "{$required}|exists:projects,id",
             'chef_de_projet_id' => 'sometimes|nullable|exists:chef_de_projets,id',
         ];
@@ -220,24 +269,14 @@ class TaskController extends Controller
         $hasGoalColumn = Schema::hasColumn('tasks', 'goal');
         $hasDescriptionColumn = Schema::hasColumn('tasks', 'description');
 
-        if (
-            $hasGoalColumn
-            && ! $hasDescriptionColumn
-            && array_key_exists('description', $payload)
-            && ! array_key_exists('goal', $payload)
-        ) {
+        // Sync goal and description if one is missing but the other is present
+        if (!empty($payload['description']) && empty($payload['goal'])) {
             $payload['goal'] = $payload['description'];
-        }
-
-        if (
-            $hasDescriptionColumn
-            && ! $hasGoalColumn
-            && array_key_exists('goal', $payload)
-            && ! array_key_exists('description', $payload)
-        ) {
+        } elseif (!empty($payload['goal']) && empty($payload['description'])) {
             $payload['description'] = $payload['goal'];
         }
 
+        // Clean up fields that don't exist in the table
         if (! $hasGoalColumn) {
             unset($payload['goal']);
         }
@@ -252,5 +291,18 @@ class TaskController extends Controller
     private function normalizeStatus(string $status): string
     {
         return $status === 'completed' ? 'done' : $status;
+    }
+
+    private function ensureValidStatusForRole(Request $request, string $status): string
+    {
+        $status = $this->normalizeStatus($status);
+
+        if ($this->userHasRole($request, 'developer') && ! $this->userHasRole($request, 'manager', 'chef_de_projet')) {
+            if (in_array($status, ['done', 'validated'])) {
+                return 'waiting_validation';
+            }
+        }
+
+        return $status;
     }
 }

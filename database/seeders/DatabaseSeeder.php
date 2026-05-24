@@ -18,6 +18,7 @@ class DatabaseSeeder extends Seeder
             ChefDeProjetSeeder::class,
             DeveloperSeeder::class,
             ProjectSeeder::class,
+            ProjectFileSeeder::class,
             TaskSeeder::class,
             SlaProjectSeeder::class,
             SlaTaskSeeder::class,

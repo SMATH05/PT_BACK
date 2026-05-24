@@ -129,20 +129,7 @@ class DeveloperProjectController extends Controller
             }
         }
 
-        $projects = $developer->projects()->with('manager', 'chefDeProjet')->get()->map(function ($project) {
-            return [
-                'id' => $project->id,
-                'name' => $project->name,
-                'description' => $project->description,
-                'deadline' => $project->deadline,
-                'position' => $project->pivot->position,
-                'joined_at' => $project->pivot->joined_at,
-                'manager' => $project->manager ? $project->manager->name : null,
-                'chef_de_projet' => $project->chefDeProjet ? $project->chefDeProjet->name : null,
-            ];
-        });
-
-        return response()->json($projects);
+        return response()->json($developer->projects()->with(['manager', 'chefDeProjet', 'slaProject'])->get());
     }
 
     /**

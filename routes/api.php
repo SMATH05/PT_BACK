@@ -5,10 +5,12 @@ use App\Http\Controllers\DeveloperController;
 use App\Http\Controllers\DeveloperProjectController;
 use App\Http\Controllers\DeveloperTaskController;
 use App\Http\Controllers\ManagerController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\ProjectFileController;
 use App\Http\Controllers\TaskController;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Route;
 
 Route::pattern('id', '[0-9]+');
@@ -18,6 +20,32 @@ Route::pattern('projectId', '[0-9]+');
 Route::pattern('taskId', '[0-9]+');
 Route::pattern('developerId', '[0-9]+');
 Route::pattern('chefDeProjetId', '[0-9]+');
+
+// ── AI Chat Proxy (uses GROQ_API_KEY from .env, secured by Keycloak auth) ──
+Route::middleware('keycloak.auth')->post('ai/chat', function (Request $request) {
+    $messages  = $request->input('messages', []);
+    $model     = $request->input('model', 'llama-3.1-8b-instant');
+    $maxTokens = $request->input('max_tokens', 256);
+    $temp      = $request->input('temperature', 0.7);
+
+    $response = Http::withHeaders([
+        'Authorization' => 'Bearer ' . env('GROQ_API_KEY'),
+        'Content-Type'  => 'application/json',
+    ])->post('https://api.groq.com/openai/v1/chat/completions', [
+        'model'       => $model,
+        'messages'    => $messages,
+        'temperature' => $temp,
+        'max_tokens'  => $maxTokens,
+    ]);
+
+    if ($response->failed()) {
+        return response()->json(['error' => 'AI service unavailable'], 502);
+    }
+
+    return response()->json($response->json());
+});
+
+Route::post('auth/register', [\App\Http\Controllers\AuthController::class, 'register']);
 
 Route::middleware('keycloak.auth')->group(function (): void {
     Route::get('auth/me', function (Request $request) {
@@ -71,6 +99,10 @@ Route::middleware('keycloak.auth')->group(function (): void {
         Route::get('developers/{developerId}/tasks/status/{status}', [DeveloperTaskController::class, 'tasksByDeveloperAndStatus']);
         Route::get('developers/{developerId}/tasks/role/{role}', [DeveloperTaskController::class, 'tasksByDeveloperAndRole']);
         Route::get('developers/{developerId}/tasks/count', [DeveloperTaskController::class, 'countTasksByDeveloper']);
+
+        Route::get('notifications', [NotificationController::class, 'index']);
+        Route::post('notifications/{id}/read', [NotificationController::class, 'markAsRead']);
+        Route::post('notifications/read-all', [NotificationController::class, 'markAllAsRead']);
     });
 
     Route::middleware('keycloak.role:manager,chef_de_projet')->group(function (): void {
@@ -84,15 +116,18 @@ Route::middleware('keycloak.auth')->group(function (): void {
         Route::get('chefs-de-projet/{id}/projects', [ChefDeProjetController::class, 'getSupervisedProjects']);
         Route::get('chefs-de-projet/{id}/tasks', [ChefDeProjetController::class, 'getValidatedTasks']);
         Route::get('chefs-de-projet/{id}/stats', [ChefDeProjetController::class, 'getChefStats']);
-    });
-
-    Route::middleware('keycloak.role:manager')->group(function (): void {
+        
+        // Task Management (Managers and Chefs)
         Route::post('tasks', [TaskController::class, 'store']);
         Route::match(['put', 'patch'], 'tasks/{id}', [TaskController::class, 'update']);
         Route::delete('tasks/{id}', [TaskController::class, 'destroy']);
         Route::patch('tasks/{id}/status', [TaskController::class, 'updateStatus']);
         Route::match(['put', 'patch'], 'tasks/{taskId}/sla', [TaskController::class, 'updateSla']);
+        Route::post('tasks/{taskId}/developers/bulk', [DeveloperTaskController::class, 'bulkAssignDevelopersToTask']);
+        Route::delete('tasks/{taskId}/developers', [DeveloperTaskController::class, 'removeAllDevelopersFromTask']);
+    });
 
+    Route::middleware('keycloak.role:manager')->group(function (): void {
         Route::post('developers', [DeveloperController::class, 'store']);
         Route::match(['put', 'patch'], 'developers/{developerId}', [DeveloperController::class, 'update']);
         Route::delete('developers/{developerId}', [DeveloperController::class, 'destroy']);
@@ -123,9 +158,6 @@ Route::middleware('keycloak.auth')->group(function (): void {
         Route::match(['put', 'patch'], 'developer-task-assignments/{developerId}/{taskId}', [DeveloperTaskController::class, 'updateAssignment']);
         Route::delete('developer-task-assignments/{developerId}/{taskId}', [DeveloperTaskController::class, 'unassignDeveloperFromTask']);
         Route::get('developer-task-assignments/{developerId}/{taskId}/details', [DeveloperTaskController::class, 'assignmentDetails']);
-
-        Route::post('tasks/{taskId}/developers/bulk', [DeveloperTaskController::class, 'bulkAssignDevelopersToTask']);
-        Route::delete('tasks/{taskId}/developers', [DeveloperTaskController::class, 'removeAllDevelopersFromTask']);
 
         Route::get('projects/{projectId}/developer-assignments', [DeveloperProjectController::class, 'listProjectDevelopers']);
         Route::post('projects/{projectId}/developers/{developerId}', [DeveloperProjectController::class, 'assignDeveloperToProject']);

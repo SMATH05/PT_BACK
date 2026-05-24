@@ -247,8 +247,19 @@ trait InteractsWithActorScope
             return true;
         }
 
-        return $this->userHasRole($request, 'manager')
-            && $task->project()->where('manager_id', $this->currentManagerId($request))->exists();
+        if ($this->userHasRole($request, 'manager')) {
+            return $task->project()->where('manager_id', $this->currentManagerId($request))->exists();
+        }
+
+        if ($this->userHasRole($request, 'chef_de_projet')) {
+            $chefId = $this->currentChefDeProjetId($request);
+            return $chefId !== null && (
+                $task->chef_de_projet_id === $chefId
+                || $task->project()->where('chef_de_projet_id', $chefId)->exists()
+            );
+        }
+
+        return false;
     }
 
     private function currentActorId(Request $request, string $actorType): ?int

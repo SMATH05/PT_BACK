@@ -1,0 +1,29 @@
+version: "3.9"
+
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0.3
+    container_name: pt_keycloak
+    command: start-dev
+    environment:
+      # Admin credentials (pour accéder à http://localhost:8088)
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      # Port HTTP interne
+      KC_HTTP_PORT: 8088
+    ports:
+      - "8088:8088"
+    volumes:
+      # Persistance des données Keycloak (realm, users, clients...)
+      - keycloak_data:/opt/keycloak/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8088/health/ready || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+volumes:
+  keycloak_data:
+    driver: local

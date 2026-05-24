@@ -128,16 +128,7 @@ class ChefDeProjetController extends Controller
 
         return response()->json([
             'chef_id' => $id,
-            'projects' => $projects->map(function ($project) {
-                return [
-                    'id' => $project->id,
-                    'name' => $project->name,
-                    'description' => $project->description,
-                    'deadline' => $project->deadline,
-                    'manager' => $project->manager ? $project->manager->name : null,
-                    'progress' => $project->getProgress(),
-                ];
-            }),
+            'projects' => $chef->projects()->with(['manager', 'chefDeProjet', 'slaProject'])->get(),
         ]);
     }
 

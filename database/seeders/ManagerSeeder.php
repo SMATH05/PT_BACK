@@ -12,6 +12,13 @@ class ManagerSeeder extends Seeder
      */
     public function run(): void
     {
+        // Create the specific manager "roda benlaama"
+        Manager::create([
+            'name'  => 'roda benlaama',
+            'email' => 'rbenlaama2005@gmail.com',
+        ]);
+
+        // Create 3 additional random managers
         Manager::factory()->count(3)->create();
     }
 }
